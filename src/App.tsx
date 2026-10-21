@@ -1,27 +1,115 @@
+import type { CSSProperties } from 'react';
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
+import { RequireProfile, RequireReady } from '@/components/RequireAuth';
+import { ToastHost } from '@/components/ToastHost';
+import { AuthProvider } from '@/context/AuthContext';
+import { ChangePasswordPage } from '@/pages/ChangePasswordPage';
 import { LaterPhasePage } from '@/pages/LaterPhasePage';
 import { LoginPage } from '@/pages/LoginPage';
 import { PosPage } from '@/pages/PosPage';
 import { SplashPage } from '@/pages/SplashPage';
+import { cssVars } from '@/theme';
 
 export function App() {
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<SplashPage />} />
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/change-password" element={<LaterPhasePage title="Change password" />} />
-        <Route path="/pos" element={<PosPage />} />
-        <Route path="/scanner" element={<LaterPhasePage title="Scanner" />} />
-        <Route path="/product-search" element={<LaterPhasePage title="Product search" />} />
-        <Route path="/returns" element={<LaterPhasePage title="Returns" />} />
-        <Route path="/sales-history" element={<LaterPhasePage title="Sales history" />} />
-        <Route path="/settings" element={<LaterPhasePage title="Settings" />} />
-        <Route path="/backups" element={<LaterPhasePage title="Backups" />} />
-        <Route path="/printer-settings" element={<LaterPhasePage title="Printer settings" />} />
-        <Route path="/notifications" element={<LaterPhasePage title="Notifications" />} />
-        <Route path="/sync-failures" element={<LaterPhasePage title="Sync failures" />} />
-      </Routes>
-    </BrowserRouter>
+    <div style={cssVars as CSSProperties}>
+      <AuthProvider>
+        <BrowserRouter>
+          <Routes>
+            <Route path="/" element={<SplashPage />} />
+            <Route path="/login" element={<LoginPage />} />
+            <Route
+              path="/change-password"
+              element={
+                <RequireProfile>
+                  <ChangePasswordPage />
+                </RequireProfile>
+              }
+            />
+            <Route
+              path="/pos"
+              element={
+                <RequireReady>
+                  <PosPage />
+                </RequireReady>
+              }
+            />
+            <Route
+              path="/scanner"
+              element={
+                <RequireReady>
+                  <LaterPhasePage title="Scanner" />
+                </RequireReady>
+              }
+            />
+            <Route
+              path="/product-search"
+              element={
+                <RequireReady>
+                  <LaterPhasePage title="Product search" />
+                </RequireReady>
+              }
+            />
+            <Route
+              path="/returns"
+              element={
+                <RequireReady>
+                  <LaterPhasePage title="Returns" />
+                </RequireReady>
+              }
+            />
+            <Route
+              path="/sales-history"
+              element={
+                <RequireReady>
+                  <LaterPhasePage title="Sales history" />
+                </RequireReady>
+              }
+            />
+            <Route
+              path="/settings"
+              element={
+                <RequireReady>
+                  <LaterPhasePage title="Settings" />
+                </RequireReady>
+              }
+            />
+            <Route
+              path="/backups"
+              element={
+                <RequireReady>
+                  <LaterPhasePage title="Backups" />
+                </RequireReady>
+              }
+            />
+            <Route
+              path="/printer-settings"
+              element={
+                <RequireReady>
+                  <LaterPhasePage title="Printer settings" />
+                </RequireReady>
+              }
+            />
+            <Route
+              path="/notifications"
+              element={
+                <RequireReady>
+                  <LaterPhasePage title="Notifications" />
+                </RequireReady>
+              }
+            />
+            <Route
+              path="/sync-failures"
+              element={
+                <RequireReady>
+                  <LaterPhasePage title="Sync failures" />
+                </RequireReady>
+              }
+            />
+          </Routes>
+        </BrowserRouter>
+        <ToastHost />
+      </AuthProvider>
+    </div>
   );
 }

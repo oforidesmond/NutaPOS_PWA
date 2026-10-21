@@ -16,6 +16,7 @@ export const PREF_KEYS = {
   lastTimeCheck: 'last_time_check',
   lowStorageDay: 'low_storage_day',
   installationId: 'installation_id',
+  deviceBindingCompleted: 'device_binding_completed',
 } as const;
 
 export type DefaultPrinter = {
@@ -34,5 +35,9 @@ export const prefsRepository = {
 
   async set(key: string, value: unknown): Promise<void> {
     await db.prefs.put({ key, value });
+  },
+
+  async delete(key: string): Promise<void> {
+    await db.prefs.delete(key);
   },
 };

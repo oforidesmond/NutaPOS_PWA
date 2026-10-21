@@ -6,6 +6,8 @@ import { db } from '@/db/schema';
  * Do not copy tokens to localStorage. Do not log token values.
  */
 const ACCESS_TOKEN = 'access_token';
+const REFRESH_TOKEN = 'refresh_token';
+export const USER_PROFILE_SECRET = 'user_profile_json';
 
 export async function getSecret(key: string): Promise<string | null> {
   const row = await db.secrets.get(key);
@@ -30,4 +32,18 @@ export async function setAccessToken(token: string): Promise<void> {
 
 export async function clearAccessToken(): Promise<void> {
   await deleteSecret(ACCESS_TOKEN);
+}
+
+export async function getRefreshToken(): Promise<string | null> {
+  return getSecret(REFRESH_TOKEN);
+}
+
+export async function setRefreshToken(token: string): Promise<void> {
+  await setSecret(REFRESH_TOKEN, token);
+}
+
+/** Removes access and refresh tokens. Does not delete the catalog or sales. */
+export async function clearStoredTokens(): Promise<void> {
+  await deleteSecret(ACCESS_TOKEN);
+  await deleteSecret(REFRESH_TOKEN);
 }

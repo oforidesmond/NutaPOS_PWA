@@ -279,6 +279,124 @@ h2 {
   margin-top: var(--space-lg);
 }
 
+.header-action {
+  border: 0;
+  background: transparent;
+  color: var(--brand);
+  font: inherit;
+  font-weight: 600;
+  min-height: 44px;
+  padding: 0 var(--space-sm);
+  cursor: pointer;
+}
+
+.glass-header-trailing {
+  flex: none;
+}
+
+.error-slot {
+  min-height: 52px;
+  margin-bottom: var(--space-md);
+}
+
+.banner-error {
+  margin: 0;
+  padding: var(--space-md) var(--space-lg);
+  border: 1px solid var(--error-border);
+  border-radius: var(--radius-md);
+  background: var(--error-bg);
+  color: var(--error);
+}
+
+.version-label {
+  margin-top: var(--space-xl);
+  text-align: center;
+}
+
+.password-intro {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  margin-bottom: var(--space-xl);
+}
+
+.sync-overlay {
+  min-height: 100dvh;
+  background: var(--white);
+  display: flex;
+  align-items: center;
+}
+
+.sync-overlay-inner {
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+  padding: var(--space-xl);
+}
+
+.sync-step {
+  margin: var(--space-md) 0 var(--space-xl);
+  color: var(--zinc-600);
+}
+
+.sync-track {
+  height: 10px;
+  border-radius: var(--radius-md);
+  background: var(--border);
+  overflow: hidden;
+}
+
+.sync-fill {
+  height: 100%;
+  background: var(--brand);
+}
+
+.sync-pct {
+  margin-top: var(--space-md);
+}
+
+.sync-error {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  margin-top: var(--space-xl);
+}
+
+.sync-spinner {
+  width: 36px;
+  height: 36px;
+  margin-top: var(--space-xl);
+  border: 3px solid var(--border);
+  border-top-color: var(--brand);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  z-index: 200;
+  transform: translateX(-50%);
+  width: min(420px, calc(100% - 32px));
+  padding: var(--space-md) var(--space-lg);
+  border-radius: var(--radius-lg);
+  background: var(--text);
+  color: var(--white);
+  box-shadow: 0 8px 24px rgba(24, 24, 27, 0.18);
+}
+
+.toast p {
+  margin: 0;
+  color: var(--white);
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 @media (min-width: 768px) {
   .pos-frame {
     max-width: 1120px;

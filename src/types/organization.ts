@@ -1,0 +1,20 @@
+export type OrganizationDto = {
+  id?: string;
+  name?: string;
+  phone?: string | null;
+  businessLocation?: string | null;
+  business_location?: string | null;
+  planType?: string;
+  plan_type?: string;
+  planStatus?: string;
+  plan_status?: string;
+  salesLimit?: number | null;
+  sales_limit?: number | null;
+  salesCount?: number;
+  sales_count?: number;
+  defaultTaxRate?: string | number;
+  default_tax_rate?: string | number;
+  taxEnabled?: boolean;
+  tax_enabled?: boolean;
+  currency?: string;
+};
