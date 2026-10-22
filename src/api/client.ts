@@ -35,7 +35,7 @@ export const api = axios.create({
 /**
  * Single-flight refresh. Stores the new access token only.
  * A failure rejects and leaves both tokens in IndexedDB.
- * Phase 6 reconnects the notifications socket after this succeeds.
+ * A successful refresh reconnects the notifications socket when one is already open.
  */
 export async function refreshAccessToken(): Promise<string | null> {
   if (!refreshPromise) {
@@ -62,6 +62,13 @@ async function performRefresh(): Promise<string | null> {
   } catch {
     // The new access token is already stored. Branch alignment retries on the next refresh.
   }
+  void import('@/services/notificationsSocketLifecycle')
+    .then((mod) => {
+      mod.onAccessTokenRefreshed();
+    })
+    .catch(() => {
+      // The access token is already stored. The socket reconnects on the next visible session.
+    });
   return access;
 }
 

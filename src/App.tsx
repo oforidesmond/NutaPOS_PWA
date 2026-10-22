@@ -1,10 +1,13 @@
 import type { CSSProperties } from 'react';
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
+import { ClockWarningHost } from '@/components/ClockWarningHost';
+import { IntegrityLaunchGate } from '@/components/IntegrityLaunchGate';
 import { RequireProfile, RequireReady } from '@/components/RequireAuth';
 import { ToastHost } from '@/components/ToastHost';
 import { AuthProvider } from '@/context/AuthContext';
+import { BackupsPage } from '@/pages/BackupsPage';
 import { ChangePasswordPage } from '@/pages/ChangePasswordPage';
-import { LaterPhasePage } from '@/pages/LaterPhasePage';
+import { NotificationsPage } from '@/pages/NotificationsPage';
 import { ReturnsPage } from '@/pages/ReturnsPage';
 import { SettingsPage } from '@/pages/SettingsPage';
 import { SyncFailuresPage } from '@/pages/SyncFailuresPage';
@@ -22,6 +25,8 @@ export function App() {
     <div style={cssVars as CSSProperties}>
       <AuthProvider>
         <BrowserRouter>
+          <IntegrityLaunchGate />
+          <ClockWarningHost />
           <Routes>
             <Route path="/" element={<SplashPage />} />
             <Route path="/login" element={<LoginPage />} />
@@ -85,7 +90,7 @@ export function App() {
               path="/backups"
               element={
                 <RequireReady>
-                  <LaterPhasePage title="Backups" />
+                  <BackupsPage />
                 </RequireReady>
               }
             />
@@ -101,7 +106,7 @@ export function App() {
               path="/notifications"
               element={
                 <RequireReady>
-                  <LaterPhasePage title="Notifications" />
+                  <NotificationsPage />
                 </RequireReady>
               }
             />

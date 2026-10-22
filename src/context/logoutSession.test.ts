@@ -4,6 +4,7 @@ import { prefsRepository } from '@/db/prefsRepository';
 import { getAccessToken, getRefreshToken, setAccessToken, setRefreshToken } from '@/db/secretsRepository';
 import { settingsRepository } from '@/db/settingsRepository';
 import { logoutSession } from '@/context/AuthContext';
+import { useNotificationStore } from '@/stores/notificationStore';
 import { isDeviceBindingCompleted } from '@/services/deviceBindingService';
 import { saveUserProfile } from '@/services/userProfileStore';
 
@@ -93,5 +94,31 @@ describe('logoutSession', () => {
       id: 'org-1',
       name: 'Shop',
     });
+  });
+
+  it('clears the in-memory notification list', async () => {
+    useNotificationStore.setState({
+      unreadCount: 3,
+      items: [
+        {
+          id: 'n1',
+          type: 'OTHER',
+          title: 'Old',
+          message: 'Body',
+          relatedEntityType: null,
+          relatedEntityId: null,
+          actionUrl: null,
+          actionLabel: null,
+          aggregateCount: 1,
+          metadata: null,
+          isRead: false,
+          readAt: null,
+          createdAt: '2026-01-01T00:00:00.000Z',
+        },
+      ],
+    });
+    await logoutSession();
+    expect(useNotificationStore.getState().unreadCount).toBe(0);
+    expect(useNotificationStore.getState().items).toEqual([]);
   });
 });

@@ -101,6 +101,13 @@ export interface SecretRow {
   value: string;
 }
 
+/** Web-only. The mobile app stores backup files on disk instead. */
+export interface LocalBackupRow {
+  file_name: string;
+  created_at: string;
+  payload: unknown;
+}
+
 export class NutaPosDatabase extends Dexie {
   products!: Table<Product, string>;
   sales!: Table<Sale, string>;
@@ -110,9 +117,11 @@ export class NutaPosDatabase extends Dexie {
   settings!: Table<SettingRow, string>;
   prefs!: Table<PrefRow, string>;
   secrets!: Table<SecretRow, string>;
+  local_backups!: Table<LocalBackupRow, string>;
 
   constructor() {
     super('nutapos_staff');
+    // Version 1 matches nutapos_staff.db at PRAGMA user_version 9.
     this.version(1).stores({
       products: 'id, barcode, sku, name',
       sales: 'id, receipt_number, sold_at, synced_at',
@@ -122,6 +131,10 @@ export class NutaPosDatabase extends Dexie {
       settings: 'key',
       prefs: 'key',
       secrets: 'key',
+    });
+    // Version 2 is web-only. It keeps local JSON backups. Do not treat it as a SQLite migration.
+    this.version(2).stores({
+      local_backups: 'file_name, created_at',
     });
   }
 }

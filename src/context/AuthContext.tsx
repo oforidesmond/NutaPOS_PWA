@@ -10,7 +10,11 @@ import {
 } from '@/services/deviceBindingService';
 import { buildDeviceFingerprint } from '@/services/deviceFingerprint';
 import { runInitialDataSync, type InitialSyncProgress } from '@/services/initialDataSync';
+import { NotificationsRealtimeEffects } from '@/services/NotificationsRealtimeEffects';
+import { PostAuthEffects } from '@/services/PostAuthEffects';
+import { disconnectNotificationsSocket } from '@/services/notificationsSocket';
 import { SyncLifecycle } from '@/services/SyncLifecycle';
+import { useNotificationStore } from '@/stores/notificationStore';
 import { startProactiveTokenRefresh } from '@/services/tokenRefreshScheduler';
 import {
   clearUserProfile,
@@ -39,6 +43,8 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 /** Clears the session. Products, sales, sale items, and the sync queue stay. */
 export async function logoutSession(): Promise<void> {
+  disconnectNotificationsSocket();
+  useNotificationStore.getState().reset();
   await clearStoredTokens();
   await clearUserProfile();
   await clearDeviceBindingFlag();
@@ -159,6 +165,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   return (
     <AuthContext.Provider value={value}>
       <SyncLifecycle />
+      <NotificationsRealtimeEffects />
+      <PostAuthEffects />
       {children}
     </AuthContext.Provider>
   );

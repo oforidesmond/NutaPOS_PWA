@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { FeedbackBanner } from '@/components/FeedbackBanner';
+import { NotificationBadge } from '@/components/NotificationBadge';
 import { FinalizeSaleModal } from '@/components/FinalizeSaleModal';
 import { GlassHeader } from '@/components/GlassHeader';
 import { ProductResultList } from '@/components/ProductResultList';
@@ -32,7 +33,9 @@ import { syncWorker } from '@/services/syncWorker';
 import { computeStockShortages, type StockShortage } from '@/services/stockVarianceService';
 import { createTemporaryProduct } from '@/services/temporaryProductService';
 import { trialManager } from '@/services/trialManager';
+import { warnDeviceTimeIfNeeded } from '@/services/timeValidationService';
 import { useCartStore, type CartLine } from '@/stores/cartStore';
+import { useNotificationStore } from '@/stores/notificationStore';
 import { text } from '@/theme';
 import type { VarianceByLineKey } from '@/types/stockVariance';
 
@@ -73,6 +76,13 @@ export function PosPage() {
   const pullStart = useRef<number | null>(null);
   const [temp, setTemp] = useState<{ barcode?: string; initialName?: string; mode: 'scanned' | 'manual' } | null>(null);
   const { results, settled } = useProductSearch(search);
+  const unreadCount = useNotificationStore((state) => state.unreadCount);
+  const hasCritical = useNotificationStore((state) => state.hasCritical);
+  const countLoading = useNotificationStore((state) => state.countLoading);
+
+  useEffect(() => {
+    void useNotificationStore.getState().fetchUnreadCount();
+  }, []);
 
   const blocking =
     menuOpen ||
@@ -156,6 +166,7 @@ export function PosPage() {
       showToast('Cart empty', 'Scan or add items before checkout.');
       return;
     }
+    void warnDeviceTimeIfNeeded(user?.userId);
     setDiscountCfg(await discountSettings());
     setTotals(await previewTotals(lines));
     setPayOpen(true);
@@ -259,9 +270,12 @@ export function PosPage() {
               >
                 {refreshing ? 'Refreshing…' : 'Refresh'}
               </button>
-              <Link to="/notifications" className="icon-button" aria-label="Notifications">
-                <BellIcon />
-              </Link>
+              <NotificationBadge
+                unreadCount={unreadCount}
+                hasCritical={hasCritical}
+                loading={countLoading}
+                onPress={() => navigate('/notifications')}
+              />
               <button type="button" className="icon-button" aria-label="Menu" onClick={() => setMenuOpen(true)}>
                 <MenuIcon />
               </button>
@@ -536,20 +550,6 @@ function QuantityEditor({ line, onClose }: { line: CartLine; onClose: () => void
         <Button title="Set" onClick={apply} />
       </div>
     </Sheet>
-  );
-}
-
-function BellIcon() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path
-        d="M6 9a6 6 0 1 1 12 0c0 7 3 7 3 9H3c0-2 3-2 3-9Z"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinejoin="round"
-      />
-      <path d="M10 20a2 2 0 0 0 4 0" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-    </svg>
   );
 }
 
