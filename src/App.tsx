@@ -7,6 +7,8 @@ import { ChangePasswordPage } from '@/pages/ChangePasswordPage';
 import { LaterPhasePage } from '@/pages/LaterPhasePage';
 import { LoginPage } from '@/pages/LoginPage';
 import { PosPage } from '@/pages/PosPage';
+import { ProductSearchPage } from '@/pages/ProductSearchPage';
+import { ScannerPage } from '@/pages/ScannerPage';
 import { SplashPage } from '@/pages/SplashPage';
 import { cssVars } from '@/theme';
 
@@ -38,7 +40,7 @@ export function App() {
               path="/scanner"
               element={
                 <RequireReady>
-                  <LaterPhasePage title="Scanner" />
+                  <ScannerPage />
                 </RequireReady>
               }
             />
@@ -46,7 +48,7 @@ export function App() {
               path="/product-search"
               element={
                 <RequireReady>
-                  <LaterPhasePage title="Product search" />
+                  <ProductSearchPage />
                 </RequireReady>
               }
             />
