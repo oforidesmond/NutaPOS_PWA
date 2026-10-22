@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { FeedbackBanner } from '@/components/FeedbackBanner';
 import { FinalizeSaleModal } from '@/components/FinalizeSaleModal';
@@ -15,6 +15,7 @@ import { showToast } from '@/components/toast';
 import { UpgradeModal } from '@/components/UpgradeModal';
 import { useAuth } from '@/context/AuthContext';
 import { productRepository } from '@/db/productRepository';
+import { syncQueueRepository } from '@/db/syncQueueRepository';
 import { prefsRepository } from '@/db/prefsRepository';
 import { getSaleWithItems } from '@/db/saleRepository';
 import { useProductSearch } from '@/hooks/useProductSearch';
@@ -25,7 +26,9 @@ import { discountSettings } from '@/lib/checkoutSettings';
 import type { CheckoutTotalsPreview } from '@/lib/checkoutTotals';
 import { previewTotals } from '@/lib/checkoutTotals';
 import { QTY_HALF, QTY_QUARTER, formatQty, normalizeQty, parseQtyInput } from '@/lib/quantity';
+import { pullMasterData } from '@/services/masterDataPull';
 import { saleService } from '@/services/saleService';
+import { syncWorker } from '@/services/syncWorker';
 import { computeStockShortages, type StockShortage } from '@/services/stockVarianceService';
 import { createTemporaryProduct } from '@/services/temporaryProductService';
 import { trialManager } from '@/services/trialManager';
@@ -64,6 +67,10 @@ export function PosPage() {
   const [totals, setTotals] = useState<CheckoutTotalsPreview>(emptyTotals);
   const [discountCfg, setDiscountCfg] = useState<DiscountSettings>({ enabled: false, maxPercent: 0 });
   const [search, setSearch] = useState('');
+  const [syncAdminReview, setSyncAdminReview] = useState(0);
+  const [syncTransportFailed, setSyncTransportFailed] = useState(0);
+  const [refreshing, setRefreshing] = useState(false);
+  const pullStart = useRef<number | null>(null);
   const [temp, setTemp] = useState<{ barcode?: string; initialName?: string; mode: 'scanned' | 'manual' } | null>(null);
   const { results, settled } = useProductSearch(search);
 
@@ -77,9 +84,31 @@ export function PosPage() {
     nameLine != null ||
     temp != null;
 
+  const refreshSyncBanners = useCallback(async () => {
+    setSyncAdminReview(await syncQueueRepository.countPendingAdminReview());
+    setSyncTransportFailed(await syncQueueRepository.countTransportFailures());
+  }, []);
+
+  const onPosRefresh = useCallback(async () => {
+    if (refreshing) return;
+    setRefreshing(true);
+    try {
+      const master = await pullMasterData();
+      if (master.outcome === 'failed') {
+        showToast('Could not refresh catalog', 'Check your connection and try again.');
+      }
+      await syncWorker.processQueue();
+      await refreshSyncBanners();
+      setDiscountCfg(await discountSettings());
+    } finally {
+      setRefreshing(false);
+    }
+  }, [refreshing, refreshSyncBanners]);
+
   useEffect(() => {
     void rehydrateFromDb();
-  }, [rehydrateFromDb]);
+    void refreshSyncBanners();
+  }, [rehydrateFromDb, refreshSyncBanners]);
 
   useEffect(() => {
     let cancelled = false;
@@ -157,6 +186,7 @@ export function PosPage() {
         receiptLabel: saleData?.sale.receipt_number ?? saleId.slice(0, 8).toUpperCase(),
         totalAmount: Number(saleData?.sale.total_amount ?? 0),
       });
+      syncWorker.trigger();
       const after = await trialManager.checkLimit();
       if (after.trialActive && after.remaining === 10) {
         const shown = await prefsRepository.get(prefsRepository.keys.trialWarningShown);
@@ -220,6 +250,15 @@ export function PosPage() {
           title="New Sale"
           trailing={
             <div className="header-tools">
+              <button
+                type="button"
+                className="header-action"
+                aria-label="Refresh catalog"
+                disabled={refreshing}
+                onClick={() => void onPosRefresh()}
+              >
+                {refreshing ? 'Refreshing…' : 'Refresh'}
+              </button>
               <Link to="/notifications" className="icon-button" aria-label="Notifications">
                 <BellIcon />
               </Link>
@@ -231,7 +270,30 @@ export function PosPage() {
         />
       }
     >
-      <section className="pane pos-catalog" aria-label="Catalog and search">
+      <section
+        className="pane pos-catalog"
+        aria-label="Catalog and search"
+        onTouchStart={(event) => {
+          if (event.currentTarget.scrollTop <= 0) pullStart.current = event.touches[0]?.clientY ?? null;
+          else pullStart.current = null;
+        }}
+        onTouchEnd={(event) => {
+          const start = pullStart.current;
+          pullStart.current = null;
+          if (start == null) return;
+          const end = event.changedTouches[0]?.clientY ?? start;
+          if (end - start > 72) void onPosRefresh();
+        }}
+      >
+        {syncAdminReview > 0 ? (
+          <button type="button" className="sync-banner" onClick={() => navigate('/sync-failures')}>
+            {syncAdminReview} sale(s) pending admin review - tap to view
+          </button>
+        ) : syncTransportFailed > 0 ? (
+          <button type="button" className="sync-banner" onClick={() => navigate('/settings')}>
+            Sync issue: {syncTransportFailed} item(s) need attention - tap to retry
+          </button>
+        ) : null}
         <Link to="/scanner" className="pos-card pos-card-primary">
           <span style={text.headline}>Scan barcode</span>
           <span style={text.caption}>Camera - add by barcode</span>

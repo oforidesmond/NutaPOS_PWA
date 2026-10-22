@@ -17,8 +17,7 @@ function isTrialPlan(org: OrganizationDto | null): boolean {
 export const trialManager = {
   /**
    * Local trial gate only.
-   * The mobile app may refresh `GET /staff/trial/status` while online.
-   * Phase 3 does not call that endpoint.
+   * `GET /staff/trial/status` runs with master data, not inside checkout.
    */
   async checkLimit(): Promise<TrialCheckResult> {
     const org = await settingsRepository.getJson<OrganizationDto>(settingsRepository.keys.organization);

@@ -5,6 +5,9 @@ import { ToastHost } from '@/components/ToastHost';
 import { AuthProvider } from '@/context/AuthContext';
 import { ChangePasswordPage } from '@/pages/ChangePasswordPage';
 import { LaterPhasePage } from '@/pages/LaterPhasePage';
+import { ReturnsPage } from '@/pages/ReturnsPage';
+import { SettingsPage } from '@/pages/SettingsPage';
+import { SyncFailuresPage } from '@/pages/SyncFailuresPage';
 import { LoginPage } from '@/pages/LoginPage';
 import { PosPage } from '@/pages/PosPage';
 import { PrinterSettingsPage } from '@/pages/PrinterSettingsPage';
@@ -58,7 +61,7 @@ export function App() {
               path="/returns"
               element={
                 <RequireReady>
-                  <LaterPhasePage title="Returns" />
+                  <ReturnsPage />
                 </RequireReady>
               }
             />
@@ -74,7 +77,7 @@ export function App() {
               path="/settings"
               element={
                 <RequireReady>
-                  <LaterPhasePage title="Settings" />
+                  <SettingsPage />
                 </RequireReady>
               }
             />
@@ -106,7 +109,7 @@ export function App() {
               path="/sync-failures"
               element={
                 <RequireReady>
-                  <LaterPhasePage title="Sync failures" />
+                  <SyncFailuresPage />
                 </RequireReady>
               }
             />

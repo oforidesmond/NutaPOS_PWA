@@ -56,6 +56,7 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
         navigateFallback: 'index.html',
         runtimeCaching: [],
+        importScripts: ['sync-sw.js'],
       },
     }),
   ],

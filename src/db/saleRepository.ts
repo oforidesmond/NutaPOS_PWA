@@ -147,3 +147,106 @@ export async function getSaleWithItems(saleId: string): Promise<{ sale: Sale; it
   const items = await db.sale_items.where('sale_id').equals(saleId).toArray();
   return { sale, items };
 }
+
+export async function markSynced(saleId: string, syncedAt: string): Promise<void> {
+  await db.sales.update(saleId, { synced_at: syncedAt });
+}
+
+export async function updateSaleAmounts(
+  saleId: string,
+  amounts: { discountAmount: number; totalAmount: number },
+): Promise<void> {
+  await db.sales.update(saleId, {
+    discount_amount: amounts.discountAmount,
+    total_amount: amounts.totalAmount,
+  });
+}
+
+/** Quantities already returned per product for a given original sale. */
+export async function getReturnedQuantitiesByProduct(originalSaleId: string): Promise<Record<string, number>> {
+  const returns = await db.sales.filter((sale) => sale.is_return === 1 && sale.original_sale_id === originalSaleId).toArray();
+  const out: Record<string, number> = {};
+  for (const sale of returns) {
+    const items = await db.sale_items.where('sale_id').equals(sale.id).toArray();
+    for (const item of items) {
+      out[item.product_id] = (out[item.product_id] ?? 0) + item.quantity;
+    }
+  }
+  return out;
+}
+
+export type InsertReturnInput = {
+  returnId: string;
+  receiptNumber: string;
+  originalSaleId: string;
+  refundAmount: number;
+  taxAmount: number;
+  paymentMethod: string;
+  soldAt: string;
+  staffId: string;
+  branchId: string | null;
+  items: {
+    id: string;
+    productId: string;
+    quantity: number;
+    unitPrice: number;
+    totalPrice: number;
+    isTemporaryProduct: boolean;
+    stockDelta: number;
+  }[];
+  initialSyncedAt?: string | null;
+};
+
+/**
+ * Writes a return that the server already accepted.
+ * Does not enqueue a sync row. Non-temporary lines increase local stock.
+ */
+export async function insertLocalReturnTx(input: InsertReturnInput): Promise<void> {
+  await db.transaction('rw', [db.sales, db.sale_items, db.products], async () => {
+    await db.sales.add({
+      id: input.returnId,
+      total_amount: input.refundAmount,
+      tax_amount: input.taxAmount,
+      discount_amount: 0,
+      payment_method: input.paymentMethod,
+      sold_at: input.soldAt,
+      synced_at: input.initialSyncedAt ?? null,
+      staff_id: input.staffId,
+      branch_id: input.branchId,
+      is_return: 1,
+      original_sale_id: input.originalSaleId,
+      receipt_number: input.receiptNumber,
+    });
+
+    for (const line of input.items) {
+      await db.sale_items.add({
+        id: line.id,
+        sale_id: input.returnId,
+        product_id: line.productId,
+        quantity: line.quantity,
+        unit_price: line.unitPrice,
+        total_price: line.totalPrice,
+        is_temporary_product: line.isTemporaryProduct ? 1 : 0,
+        variance_reason: null,
+        variance_note: null,
+      });
+      if (!line.isTemporaryProduct) {
+        const product = await db.products.get(line.productId);
+        if (product) {
+          await db.products.update(line.productId, {
+            stock_quantity: product.stock_quantity + line.stockDelta,
+          });
+        }
+      }
+    }
+  });
+}
+
+export const saleRepository = {
+  markSynced,
+  updateSaleAmounts,
+  getReturnedQuantitiesByProduct,
+  insertLocalReturnTx,
+  getSaleWithItems,
+  searchSales,
+};

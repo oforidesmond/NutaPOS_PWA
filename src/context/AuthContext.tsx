@@ -10,6 +10,7 @@ import {
 } from '@/services/deviceBindingService';
 import { buildDeviceFingerprint } from '@/services/deviceFingerprint';
 import { runInitialDataSync, type InitialSyncProgress } from '@/services/initialDataSync';
+import { SyncLifecycle } from '@/services/SyncLifecycle';
 import { startProactiveTokenRefresh } from '@/services/tokenRefreshScheduler';
 import {
   clearUserProfile,
@@ -155,7 +156,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     ],
   );
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={value}>
+      <SyncLifecycle />
+      {children}
+    </AuthContext.Provider>
+  );
 }
 
 export function useAuth(): AuthContextValue {

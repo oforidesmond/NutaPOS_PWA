@@ -1018,3 +1018,105 @@ h2 {
   opacity: 0.7;
   cursor: not-allowed;
 }
+
+.sync-banner {
+  display: block;
+  width: 100%;
+  margin: 0 0 var(--space-md);
+  padding: var(--space-md) var(--space-lg);
+  border: 1px solid var(--warn);
+  border-radius: var(--radius-md);
+  background: #fffbeb;
+  color: var(--text);
+  font: inherit;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+}
+
+.settings-card {
+  margin-bottom: var(--space-lg);
+  padding: var(--space-lg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--white);
+}
+
+.settings-card-warn {
+  border-color: var(--warn);
+}
+
+.repair-card {
+  margin-top: var(--space-lg);
+  padding: var(--space-lg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--white);
+}
+
+.repair-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+}
+
+.admin-badge {
+  padding: 4px var(--space-sm);
+  border-radius: var(--radius-md);
+  background: var(--brand-ring);
+  color: var(--brand-pressed);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+}
+
+.admin-note {
+  margin-top: var(--space-md);
+  padding: var(--space-md);
+  border-radius: var(--radius-md);
+  background: var(--brand-ring);
+}
+
+.result-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 100%;
+  margin-bottom: var(--space-md);
+  padding: var(--space-lg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  background: var(--white);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.return-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+  margin-bottom: var(--space-md);
+}
+
+.qty-input {
+  width: 64px;
+  min-height: 44px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-md);
+  background: var(--white);
+  text-align: center;
+  font: inherit;
+}
+
+.money-input {
+  width: 100%;
+  min-height: 52px;
+  padding: 0 var(--space-md);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-lg);
+}

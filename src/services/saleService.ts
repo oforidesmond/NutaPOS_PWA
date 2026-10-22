@@ -7,6 +7,7 @@ import { validateDiscount } from '@/lib/discount';
 import { generateReceiptNumber } from '@/lib/receiptNumber';
 import { buildSaleDeviceInfo } from '@/lib/saleDeviceInfo';
 import { normalizeQty } from '@/lib/quantity';
+import { registerSaleSync } from '@/services/backgroundSync';
 import { trialManager } from '@/services/trialManager';
 import type { CartLine } from '@/stores/cartStore';
 import type { OrganizationDto } from '@/types/organization';
@@ -192,6 +193,8 @@ export const saleService = {
       syncQueueEntries,
       incrementTrial: trial.trialActive,
     });
+
+    void registerSaleSync();
 
     return { saleId, receiptNumber };
   },

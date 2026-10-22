@@ -18,28 +18,40 @@ import {
 type Props = {
   open: boolean;
   shortages: StockShortage[];
+  initialValues?: VarianceByLineKey;
   submitting?: boolean;
   onCancel: () => void;
   onConfirm: (variance: VarianceByLineKey) => void;
 };
 
-function buildDraft(shortages: StockShortage[]): Record<string, VarianceDraftEntry> {
+function buildDraft(shortages: StockShortage[], initial?: VarianceByLineKey): Record<string, VarianceDraftEntry> {
   const draft: Record<string, VarianceDraftEntry> = {};
   for (const shortage of shortages) {
-    draft[shortage.key] = { reason: null, note: '' };
+    const seeded = initial?.[shortage.key];
+    draft[shortage.key] = {
+      reason: seeded?.varianceReason ?? null,
+      note: seeded?.varianceNote ?? '',
+    };
   }
   return draft;
 }
 
-export function StockVarianceModal({ open, shortages, submitting = false, onCancel, onConfirm }: Props) {
+export function StockVarianceModal({
+  open,
+  shortages,
+  initialValues,
+  submitting = false,
+  onCancel,
+  onConfirm,
+}: Props) {
   const [draft, setDraft] = useState<Record<string, VarianceDraftEntry>>({});
   const [validationMessage, setValidationMessage] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open) return;
-    setDraft(buildDraft(shortages));
+    setDraft(buildDraft(shortages, initialValues));
     setValidationMessage(null);
-  }, [open, shortages]);
+  }, [open, shortages, initialValues]);
 
   const confirm = () => {
     if (submitting) return;

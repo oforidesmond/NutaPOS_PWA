@@ -30,4 +30,14 @@ export const trialRepository = {
       last_updated: now,
     });
   },
+
+  /** Server trial count. Does not run inside the checkout transaction. */
+  async setSalesCountFromServer(salesCount: number): Promise<void> {
+    const existing = await this.get();
+    if (!existing) return;
+    await db.trial_usage.update(1, {
+      sales_count: salesCount,
+      last_updated: new Date().toISOString(),
+    });
+  },
 };

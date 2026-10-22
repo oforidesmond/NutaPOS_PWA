@@ -52,6 +52,35 @@ export const productRepository = {
     return (await db.products.get(id)) ?? null;
   },
 
+  async markSyncedAt(id: string, syncedAt: string): Promise<void> {
+    await db.products.update(id, { synced_at: syncedAt });
+  },
+
+  async deleteManyByIds(ids: string[]): Promise<void> {
+    if (!ids.length) return;
+    await db.products.bulkDelete(ids);
+  },
+
+  async updateStockForMany(rows: { id: string; stock_quantity: number }[]): Promise<void> {
+    await db.transaction('rw', db.products, async () => {
+      for (const row of rows) {
+        const existing = await db.products.get(row.id);
+        if (!existing) continue;
+        await db.products.update(row.id, { stock_quantity: row.stock_quantity });
+      }
+    });
+  },
+
+  async updateAutoConvertForMany(rows: { id: string; auto_convert_json: string | null }[]): Promise<void> {
+    await db.transaction('rw', db.products, async () => {
+      for (const row of rows) {
+        const existing = await db.products.get(row.id);
+        if (!existing) continue;
+        await db.products.update(row.id, { auto_convert_json: row.auto_convert_json });
+      }
+    });
+  },
+
   async findByBarcode(barcode: string): Promise<Product | null> {
     if (!barcode) return null;
     return (await db.products.where('barcode').equals(barcode).first()) ?? null;
