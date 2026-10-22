@@ -60,7 +60,7 @@ export function PosPage() {
   const [pendingPayment, setPendingPayment] = useState<string | null>(null);
   const [pendingDiscount, setPendingDiscount] = useState(0);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
-  const [complete, setComplete] = useState<{ receiptLabel: string; totalAmount: number } | null>(null);
+  const [complete, setComplete] = useState<{ saleId: string; receiptLabel: string; totalAmount: number } | null>(null);
   const [totals, setTotals] = useState<CheckoutTotalsPreview>(emptyTotals);
   const [discountCfg, setDiscountCfg] = useState<DiscountSettings>({ enabled: false, maxPercent: 0 });
   const [search, setSearch] = useState('');
@@ -153,6 +153,7 @@ export function PosPage() {
       setPendingDiscount(0);
       const saleData = await getSaleWithItems(saleId);
       setComplete({
+        saleId,
         receiptLabel: saleData?.sale.receipt_number ?? saleId.slice(0, 8).toUpperCase(),
         totalAmount: Number(saleData?.sale.total_amount ?? 0),
       });
@@ -356,6 +357,7 @@ export function PosPage() {
         <h2 style={text.title2}>Menu</h2>
         <div className="sheet-actions">
           <Button title="Settings" variant="secondary" onClick={() => navigate('/settings')} />
+          <Button title="Printer" variant="secondary" onClick={() => navigate('/printer-settings')} />
           <Button title="Sign out" variant="dangerOutline" onClick={() => void onSignOut()} />
           <Button title="Cancel" variant="ghost" onClick={() => setMenuOpen(false)} />
         </div>
@@ -407,6 +409,7 @@ export function PosPage() {
       <UpgradeModal open={upgradeOpen} onDismiss={() => setUpgradeOpen(false)} />
       <SaleCompleteSheet
         open={complete != null}
+        saleId={complete?.saleId ?? ''}
         receiptLabel={complete?.receiptLabel ?? ''}
         totalAmount={complete?.totalAmount ?? 0}
         onDismiss={() => {

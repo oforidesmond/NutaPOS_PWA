@@ -7,7 +7,9 @@ import { ChangePasswordPage } from '@/pages/ChangePasswordPage';
 import { LaterPhasePage } from '@/pages/LaterPhasePage';
 import { LoginPage } from '@/pages/LoginPage';
 import { PosPage } from '@/pages/PosPage';
+import { PrinterSettingsPage } from '@/pages/PrinterSettingsPage';
 import { ProductSearchPage } from '@/pages/ProductSearchPage';
+import { SalesHistoryPage } from '@/pages/SalesHistoryPage';
 import { ScannerPage } from '@/pages/ScannerPage';
 import { SplashPage } from '@/pages/SplashPage';
 import { cssVars } from '@/theme';
@@ -64,7 +66,7 @@ export function App() {
               path="/sales-history"
               element={
                 <RequireReady>
-                  <LaterPhasePage title="Sales history" />
+                  <SalesHistoryPage />
                 </RequireReady>
               }
             />
@@ -88,7 +90,7 @@ export function App() {
               path="/printer-settings"
               element={
                 <RequireReady>
-                  <LaterPhasePage title="Printer settings" />
+                  <PrinterSettingsPage />
                 </RequireReady>
               }
             />

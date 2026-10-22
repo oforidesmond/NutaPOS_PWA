@@ -884,3 +884,137 @@ h2 {
     grid-column: 2;
   }
 }
+
+.sale-mark {
+  display: flex;
+  justify-content: center;
+}
+
+.sale-subtitle,
+.sale-hint,
+.printer-note {
+  margin: 0;
+  text-align: center;
+  color: var(--zinc-600);
+}
+
+.sale-summary {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  padding: var(--space-lg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  background: var(--page);
+}
+
+.printer-card,
+.history-card {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-md);
+  padding: var(--space-lg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  background: var(--white);
+}
+
+.printer-card {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.history-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.history-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+}
+
+.history-meta {
+  margin: var(--space-xs) 0 0;
+  color: var(--muted);
+}
+
+.history-offer {
+  flex-basis: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.history-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-md);
+  padding: var(--space-xxl) 0;
+  text-align: center;
+}
+
+.badge {
+  flex: none;
+  padding: 4px var(--space-sm);
+  border-radius: var(--radius-md);
+  background: var(--page);
+  color: var(--zinc-600);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.filter-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+}
+
+.filter-chip {
+  padding: var(--space-sm) var(--space-md);
+  border: 0;
+  border-radius: 999px;
+  background: var(--border);
+  color: var(--zinc-600);
+  font: inherit;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.filter-chip-on {
+  background: var(--brand);
+  color: var(--white);
+}
+
+.filter-pair {
+  display: flex;
+  gap: var(--space-sm);
+}
+
+.filter-pair .field {
+  flex: 1;
+  min-width: 0;
+}
+
+.print-mini {
+  flex: none;
+  min-height: 44px;
+  min-width: 88px;
+  padding: var(--space-sm) var(--space-md);
+  border: 1px solid var(--brand);
+  border-radius: var(--radius-lg);
+  background: var(--brand-ring);
+  color: var(--brand);
+  font: inherit;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.print-mini:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
