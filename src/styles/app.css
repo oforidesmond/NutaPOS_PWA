@@ -128,9 +128,10 @@ h2 {
 }
 
 .hero-mark {
+  display: block;
   width: 80px;
   height: 80px;
-  border-radius: var(--radius-xl);
+  object-fit: contain;
 }
 
 .stack {

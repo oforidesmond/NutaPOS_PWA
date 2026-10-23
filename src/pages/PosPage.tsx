@@ -328,7 +328,7 @@ export function PosPage() {
           <span style={text.subheadline}>Sales history & filters</span>
         </Link>
         <p className="wedge-hint" style={text.caption}>
-          A USB barcode scanner can type into this screen. A focused text field does not count as a scan.
+          A USB barcode scanner can type into this screen.
         </p>
         <div className="pos-inline-search">
           <TextField
