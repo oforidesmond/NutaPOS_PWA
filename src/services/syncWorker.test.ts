@@ -203,6 +203,28 @@ describe('syncWorker', () => {
     expect(postSale).toHaveBeenCalledTimes(1);
   });
 
+  it('uploads a row left in SYNCING without counting another attempt', async () => {
+    await db.sync_queue.add(queue({ status: 'SYNCING', attempt_count: 2 }));
+    postSale.mockResolvedValueOnce({ kind: 'success', syncedAt: '2026-02-04T00:00:00.000Z' });
+    await syncWorker.processQueue();
+    const row = (await db.sync_queue.toArray())[0];
+    expect(postSale).toHaveBeenCalledTimes(1);
+    expect(row?.status).toBe('COMPLETED');
+    expect(row?.attempt_count).toBe(2);
+    expect((await db.sales.get('sale-1'))?.synced_at).toBe('2026-02-04T00:00:00.000Z');
+  });
+
+  it('stores a non-DLQ sale error message on the queue row', async () => {
+    await db.sync_queue.add(queue());
+    postSale.mockRejectedValueOnce(
+      new Error('postStaffSale: unrecognised 400 response without DLQ fields: quantity must be positive'),
+    );
+    await syncWorker.processQueue();
+    const row = (await db.sync_queue.toArray())[0];
+    expect(row?.status).toBe('FAILED');
+    expect(row?.last_error).toContain('quantity must be positive');
+  });
+
   it('marks an unknown entity type COMPLETED', async () => {
     await db.sync_queue.add(queue({ entity_type: 'inventory_event', entity_id: 'evt-1' }));
     await syncWorker.processQueue();

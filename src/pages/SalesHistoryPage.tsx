@@ -232,11 +232,18 @@ export function SalesHistoryPage() {
       {loading ? (
         <p style={text.callout}>Loading sales…</p>
       ) : rows.length === 0 ? (
-        <div className="history-empty">
-          <p style={text.headline}>No sales yet</p>
-          <p style={text.callout}>Completed checkouts appear here for this device.</p>
-          <Button title="Open new sale" onClick={() => navigate('/pos')} />
-        </div>
+        hasActiveFilters ? (
+          <div className="history-empty">
+            <p style={text.headline}>No sales match these filters</p>
+            <p style={text.callout}>Try another date range, or clear the filters.</p>
+          </div>
+        ) : (
+          <div className="history-empty">
+            <p style={text.headline}>No sales yet</p>
+            <p style={text.callout}>Completed checkouts appear here for this device.</p>
+            <Button title="Open new sale" onClick={() => navigate('/pos')} />
+          </div>
+        )
       ) : (
         <div className="stack">
           {rows.map((sale) => {

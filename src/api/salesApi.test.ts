@@ -147,7 +147,19 @@ describe('postStaffSale outcome classification', () => {
       status: 400,
       data: { message: 'validation error' },
     });
-    await expect(postStaffSale(makeBody())).rejects.toThrow(/unrecognised 400/);
+    await expect(postStaffSale(makeBody())).rejects.toThrow(
+      'postStaffSale: unrecognised 400 response without DLQ fields: validation error',
+    );
+  });
+
+  it('joins array validation messages into the thrown 400 error', async () => {
+    mockPost.mockResolvedValueOnce({
+      status: 400,
+      data: { message: ['quantity must be positive', '  ', 'price is required'] },
+    });
+    await expect(postStaffSale(makeBody())).rejects.toThrow(
+      /unrecognised 400 response without DLQ fields: quantity must be positive · price is required/,
+    );
   });
 
   it('propagates 5xx as a thrown error so the worker retries (transport failure path)', async () => {

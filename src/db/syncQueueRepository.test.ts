@@ -31,6 +31,21 @@ describe('syncQueueRepository', () => {
     await db.open();
   });
 
+  it('reclaimSyncing() returns SYNCING rows to PENDING without changing the attempt count', async () => {
+    await db.sync_queue.add(row({ status: 'SYNCING', attempt_count: 2, entity_id: 'stuck' }));
+    await db.sync_queue.add(row({ status: 'FAILED', attempt_count: 1, entity_id: 'failed' }));
+
+    await syncQueueRepository.reclaimSyncing();
+
+    const rows = await db.sync_queue.toArray();
+    const stuck = rows.find((item) => item.entity_id === 'stuck');
+    const failed = rows.find((item) => item.entity_id === 'failed');
+    expect(stuck?.status).toBe('PENDING');
+    expect(stuck?.attempt_count).toBe(2);
+    expect(failed?.status).toBe('FAILED');
+    expect(failed?.attempt_count).toBe(1);
+  });
+
   it('listPending() never selects PENDING_SUPER_ADMIN or CLEARED_ADMIN', async () => {
     await db.sync_queue.bulkAdd([
       row({ entity_id: 'pending', status: 'PENDING', created_at: '2025-01-01T00:00:00.000Z' }),

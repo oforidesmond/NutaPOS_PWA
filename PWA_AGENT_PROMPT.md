@@ -767,3 +767,18 @@ New payment methods, a category browser, dark mode, server APIs that do not alre
 | 6 | Notifications, backups, settings, layout pass | The full cashier works on a phone and on a desktop |
 
 Start with Phase 1. Do not ask an agent to implement every phase in one session.
+
+---
+
+## Needs your input
+
+The build follows the phone app where this prompt and that app disagree. These items are left for a product decision. Do not change them until one of the answers below is chosen.
+
+- **Account row.** This prompt says the settings account row shows Staff ID initials only. The phone settings screen, and this PWA, also show the full Staff ID under the initials. Say if the full ID should be removed.
+- **Integrity check.** This prompt compares `sales_count` with non-return sales only while the plan is trial. The phone service, and this PWA, compare whenever the trial row exists, create the row if it is missing, and still show the blocking sheet after an auto-fix. Say if that check should be limited to trial plans, or if a corrected count should open POS without the sheet.
+- **Trial count on first sync.** This prompt says to seed `trial_usage.sales_count` from the payload when a count is present. The phone seeder and this PWA start a new row at 0 and keep an existing count. The organization JSON still stores `salesCount`. Say if the usage row should copy the payload count.
+- **Missing branch claim.** A decoded access token with no `activeBranchId` clears `profile.branchId`, matching the phone `jwtClaims` helper. The line above that says "`undefined` means the token could not be decoded" can be read as "a missing claim leaves the branch alone." Say if the PWA should diverge from the phone app.
+- **POS banners.** This prompt describes two banners. The phone POS, and this PWA, show only one: admin review if any, otherwise exhausted failures. The failure banner opens Settings, where **Retry failed uploads** lives. Say if both should show, and if the failure banner should retry in place.
+- **Sales history chips.** Today, week, month, and all only change the selection until **Apply**, matching the phone screen. Say if a chip should reload the list immediately.
+- **`.env.example`.** This prompt shows an empty `VITE_API_URL=`. The example file is `http://localhost:3000`, with a comment that an empty value blocks login. Say if the example should be empty.
+- **Not verified in a browser against a live server.** A real USB or Bluetooth thermal printer, a production load followed by an offline reload, a live Socket.IO unread badge, and a full checkout at phone width and at 1024px were not exercised. The code and CSS for those paths are present.

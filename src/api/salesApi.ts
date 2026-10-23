@@ -86,6 +86,28 @@ function readDlqFailure(data: unknown): StaffSaleDlqFailureBody | null {
   };
 }
 
+function responseMessage(data: unknown): string | null {
+  if (!data || typeof data !== 'object') return null;
+  const raw = (data as { message?: unknown }).message;
+  if (typeof raw === 'string') {
+    const trimmed = raw.trim();
+    return trimmed.length > 0 ? trimmed : null;
+  }
+  if (Array.isArray(raw)) {
+    const parts = raw
+      .filter((item): item is string => typeof item === 'string')
+      .map((item) => item.trim())
+      .filter((item) => item.length > 0);
+    return parts.length > 0 ? parts.join(' · ') : null;
+  }
+  return null;
+}
+
+function unrecognisedSaleError(summary: string, data: unknown): Error {
+  const detail = responseMessage(data);
+  return new Error(detail ? `${summary}: ${detail}` : summary);
+}
+
 function readSyncedAt(data: unknown): string | undefined {
   if (!data || typeof data !== 'object') return undefined;
   const obj = data as Record<string, unknown>;
@@ -122,10 +144,10 @@ export async function postStaffSale(body: StaffSalePayload): Promise<StaffSalePo
     if (syncedAt) {
       return { kind: 'duplicate-success', syncedAt };
     }
-    throw new Error('postStaffSale: unrecognised 409 response (no syncedAt, no errorCode)');
+    throw unrecognisedSaleError('postStaffSale: unrecognised 409 response (no syncedAt, no errorCode)', data);
   }
 
-  throw new Error(`postStaffSale: unrecognised ${status} response without DLQ fields`);
+  throw unrecognisedSaleError(`postStaffSale: unrecognised ${status} response without DLQ fields`, data);
 }
 
 /**

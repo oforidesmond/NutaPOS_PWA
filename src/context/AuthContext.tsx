@@ -41,6 +41,18 @@ type AuthContextValue = {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+/**
+ * An in-flight bind or initial sync can finish after logout and write the
+ * setup flags again. When the access token is already gone, clear those flags
+ * and report that the session ended.
+ */
+export async function rollbackSetupIfSignedOut(): Promise<boolean> {
+  if (await getStoredAccessToken()) return false;
+  await clearDeviceBindingFlag();
+  await settingsRepository.setInitialSyncDone(false);
+  return true;
+}
+
 /** Clears the session. Products, sales, sale items, and the sync queue stay. */
 export async function logoutSession(): Promise<void> {
   disconnectNotificationsSocket();
@@ -131,9 +143,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const runBindAndInitialSync = useCallback(
     async (onProgress: (p: InitialSyncProgress) => void) => {
       await ensureDeviceBound();
+      if (await rollbackSetupIfSignedOut()) return;
       await refreshLocalFlags();
       const fp = await buildDeviceFingerprint();
       await runInitialDataSync(fp, onProgress);
+      if (await rollbackSetupIfSignedOut()) return;
       await refreshLocalFlags();
     },
     [refreshLocalFlags],

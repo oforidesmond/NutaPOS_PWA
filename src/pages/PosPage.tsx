@@ -120,6 +120,8 @@ export function PosPage() {
     void refreshSyncBanners();
   }, [rehydrateFromDb, refreshSyncBanners]);
 
+  useEffect(() => syncWorker.onSettled(() => void refreshSyncBanners()), [refreshSyncBanners]);
+
   useEffect(() => {
     let cancelled = false;
     void previewTotals(lines).then((next) => {
@@ -326,7 +328,7 @@ export function PosPage() {
           <span style={text.subheadline}>Sales history & filters</span>
         </Link>
         <p className="wedge-hint" style={text.caption}>
-          A USB barcode scanner can type into this screen.
+          A USB barcode scanner can type into this screen. A focused text field does not count as a scan.
         </p>
         <div className="pos-inline-search">
           <TextField

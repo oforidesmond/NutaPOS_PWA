@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { db, type Product } from '@/db/schema';
+import { QTY_MAX } from '@/lib/quantity';
 import { useCartStore } from '@/stores/cartStore';
 
 function row(partial: Partial<Product> & { id: string; name: string; price: number }): Product {
@@ -35,6 +36,15 @@ describe('cartStore', () => {
     expect(useCartStore.getState().lines[0].quantity).toBe(2.75);
     useCartStore.getState().setQty('a', 0);
     expect(useCartStore.getState().lines).toEqual([]);
+  });
+
+  it('caps a line at the maximum sell quantity', () => {
+    const item = row({ id: 'a', name: 'Rice', price: 4 });
+    useCartStore.getState().addProduct(item);
+    useCartStore.getState().setQty('a', QTY_MAX + 10);
+    expect(useCartStore.getState().lines[0].quantity).toBe(QTY_MAX);
+    useCartStore.getState().addProduct(item);
+    expect(useCartStore.getState().lines[0].quantity).toBe(QTY_MAX);
   });
 
   it('refreshes product snapshots and drops deleted products', async () => {

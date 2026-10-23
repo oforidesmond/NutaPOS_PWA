@@ -118,6 +118,30 @@ describe('runInitialDataSync', () => {
     expect(await settingsRepository.isInitialSyncDone()).toBe(true);
   });
 
+  it('falls back to the split endpoints when the initial pull keeps failing', async () => {
+    let pullTries = 0;
+    vi.spyOn(api, 'get').mockImplementation(async (url) => {
+      const path = String(url);
+      if (path.includes('/sync/initial-pull')) {
+        pullTries += 1;
+        throw new Error('pull down');
+      }
+      if (path.includes('/staff/inventory')) {
+        return { data: [{ id: 'p3', name: 'Soap', price: 2, stock_quantity: 4 }] } as never;
+      }
+      if (path.includes('/staff/pricing')) return { data: [] } as never;
+      if (path.includes('/staff/settings/tax')) return { data: { defaultTaxRate: 0, taxEnabled: false } } as never;
+      if (path.includes('/staff/categories')) return { data: [] } as never;
+      throw new Error(`unexpected ${path}`);
+    });
+
+    await runInitialDataSync(fingerprint, () => {});
+
+    expect(pullTries).toBe(3);
+    expect(await db.products.get('p3')).toMatchObject({ name: 'Soap', price: 2, stock_quantity: 4 });
+    expect(await settingsRepository.isInitialSyncDone()).toBe(true);
+  });
+
   it('retries a failed step and leaves initial sync unset when it still fails', async () => {
     let inventoryTries = 0;
     vi.spyOn(api, 'get').mockImplementation(async (url) => {

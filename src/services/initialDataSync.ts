@@ -57,9 +57,9 @@ export async function runInitialDataSync(
   const fpHash = await hashFingerprintCanonical(fingerprint);
   const now = new Date().toISOString();
 
-  const initial = await withRetries(() => fetchInitialPull());
+  const initial = await withRetries(() => fetchInitialPull()).catch(() => null);
 
-  if (initial.organization) {
+  if (initial?.organization) {
     const org = normalizeOrg(initial.organization);
     if (org) {
       await settingsRepository.setJson(settingsRepository.keys.organization, org);
@@ -70,7 +70,7 @@ export async function runInitialDataSync(
     }
   }
 
-  if (initial.products && initial.products.length > 0) {
+  if (initial?.products && initial.products.length > 0) {
     const products = normalizeProductsFromInitialPull(initial);
     await productRepository.upsertMany(products);
     if (initial.categories?.length) {

@@ -3,7 +3,7 @@ import { db, type Product, type Sale } from '@/db/schema';
 import { prefsRepository } from '@/db/prefsRepository';
 import { getAccessToken, getRefreshToken, setAccessToken, setRefreshToken } from '@/db/secretsRepository';
 import { settingsRepository } from '@/db/settingsRepository';
-import { logoutSession } from '@/context/AuthContext';
+import { logoutSession, rollbackSetupIfSignedOut } from '@/context/AuthContext';
 import { useNotificationStore } from '@/stores/notificationStore';
 import { isDeviceBindingCompleted } from '@/services/deviceBindingService';
 import { saveUserProfile } from '@/services/userProfileStore';
@@ -120,5 +120,21 @@ describe('logoutSession', () => {
     await logoutSession();
     expect(useNotificationStore.getState().unreadCount).toBe(0);
     expect(useNotificationStore.getState().items).toEqual([]);
+  });
+
+  it('drops setup flags written after the access token is gone', async () => {
+    await prefsRepository.set(prefsRepository.keys.deviceBindingCompleted, true);
+    await settingsRepository.setInitialSyncDone(true);
+
+    expect(await rollbackSetupIfSignedOut()).toBe(true);
+    expect(await isDeviceBindingCompleted()).toBe(false);
+    expect(await settingsRepository.isInitialSyncDone()).toBe(false);
+
+    await setAccessToken('still-signed-in');
+    await prefsRepository.set(prefsRepository.keys.deviceBindingCompleted, true);
+    await settingsRepository.setInitialSyncDone(true);
+    expect(await rollbackSetupIfSignedOut()).toBe(false);
+    expect(await isDeviceBindingCompleted()).toBe(true);
+    expect(await settingsRepository.isInitialSyncDone()).toBe(true);
   });
 });

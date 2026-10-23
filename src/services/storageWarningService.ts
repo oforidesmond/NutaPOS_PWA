@@ -4,6 +4,7 @@ import { prefsRepository } from '@/db/prefsRepository';
 
 const CRITICAL_MB = 100;
 const WARNING_MB = 500;
+let softStorageWarnedThisLoad = false;
 
 export async function readFreeStorageMb(): Promise<number | null> {
   if (typeof navigator === 'undefined' || !navigator.storage?.estimate) return null;
@@ -43,6 +44,8 @@ export async function warnIfLowStorage(): Promise<void> {
   }
 
   if (freeMb < WARNING_MB) {
+    if (softStorageWarnedThisLoad) return;
+    softStorageWarnedThisLoad = true;
     showToast('Low storage', `${Math.round(freeMb)} MB free. Consider freeing space before long shifts.`);
     if (typeof navigator === 'undefined' || navigator.onLine) {
       void postStaffDeviceWarning({

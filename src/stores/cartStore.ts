@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { productRepository, type ProductRow } from '@/db/productRepository';
-import { QTY_MIN, addQtyValues, normalizeQty } from '@/lib/quantity';
+import { QTY_MAX, QTY_MIN, addQtyValues, normalizeQty } from '@/lib/quantity';
 
 export type CartLine = {
   key: string;
@@ -23,6 +23,12 @@ type State = {
   rehydrateFromDb: () => Promise<void>;
 };
 
+function cappedQty(qty: number): number {
+  const q = normalizeQty(qty);
+  if (q > QTY_MAX) return QTY_MAX;
+  return q;
+}
+
 export const useCartStore = create<State>((set, get) => ({
   lines: [],
   addProduct: (product) => {
@@ -31,7 +37,7 @@ export const useCartStore = create<State>((set, get) => ({
     if (existing) {
       set({
         lines: lines.map((line) =>
-          line.product.id === product.id ? { ...line, quantity: addQtyValues(line.quantity, 1) } : line,
+          line.product.id === product.id ? { ...line, quantity: cappedQty(addQtyValues(line.quantity, 1)) } : line,
         ),
       });
     } else {
@@ -39,7 +45,7 @@ export const useCartStore = create<State>((set, get) => ({
     }
   },
   setQty: (key, qty) => {
-    const q = normalizeQty(qty);
+    const q = cappedQty(qty);
     if (q < QTY_MIN) {
       get().removeLine(key);
       return;

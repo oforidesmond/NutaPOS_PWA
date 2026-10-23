@@ -4,13 +4,7 @@ import { FeedbackBanner } from '@/components/FeedbackBanner';
 import { Sheet } from '@/components/Sheet';
 import { useOnline } from '@/components/useOnline';
 import type { DiscountSettings } from '@/lib/checkoutSettings';
-import {
-  computeDiscountPercent,
-  computeTotalWithDiscount,
-  maxDiscountAmount,
-  roundMoney,
-  validateDiscount,
-} from '@/lib/discount';
+import { computeDiscountPercent, computeTotalWithDiscount, roundMoney, validateDiscount } from '@/lib/discount';
 import type { CheckoutTotalsPreview } from '@/lib/checkoutTotals';
 import { text } from '@/theme';
 
@@ -79,7 +73,6 @@ export function FinalizeSaleModal({
     [subtotal, taxAmount, safeDiscount],
   );
   const discountPercent = safeDiscount > 0 ? computeDiscountPercent(safeDiscount, subtotal) : 0;
-  const maxDiscount = maxDiscountAmount(subtotal, discountCfg.maxPercent);
 
   const discountValidation = useMemo(() => {
     if (!Number.isFinite(discountAmount)) {
@@ -174,8 +167,8 @@ export function FinalizeSaleModal({
           />
           {safeDiscount > 0 && Number.isFinite(discountAmount) ? (
             <p className={discountOverCap ? 'field-error' : 'hint'} style={text.caption}>
-              {discountOverCap
-                ? `Maximum is ${discountCfg.maxPercent}% (GHS ${maxDiscount.toFixed(2)})`
+              {discountOverCap && !discountValidation.ok
+                ? discountValidation.message
                 : `That's ${discountPercent.toFixed(1)}% of subtotal`}
             </p>
           ) : (
@@ -261,7 +254,7 @@ export function FinalizeSaleModal({
           <div className="breakdown-row">
             <span>Change to give</span>
             <span className={!Number.isFinite(received) || change < 0 ? 'change-short' : 'change-ok'}>
-              GHS {Number.isFinite(received) ? Math.abs(change).toFixed(2) : '-'}
+              GHS {Number.isFinite(received) ? (change < 0 ? '0.00' : change.toFixed(2)) : '-'}
             </span>
           </div>
           {!Number.isFinite(received) ? (

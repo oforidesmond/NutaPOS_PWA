@@ -9,6 +9,7 @@ import { ensureSaleDeviceInfo } from '@/lib/saleDeviceInfo';
 import { pullSyncFailureResolutions } from '@/services/syncFailureResolutionPull';
 
 let processQueueInFlight: Promise<void> | null = null;
+const queueSettledListeners = new Set<() => void>();
 const TEMPORARY_ITEM_VARIANCE_REASON = 'PHYSICAL_STOCK_PRESENT' as const;
 
 function isBrowserOnline(): boolean {
@@ -108,6 +109,7 @@ async function processQueueImpl(): Promise<void> {
   if (!(await getStoredAccessToken())) return;
   if (!isBrowserOnline()) return;
 
+  await syncQueueRepository.reclaimSyncing();
   await pullSyncFailureResolutions();
 
   for (let pass = 0; pass < 3; pass += 1) {
@@ -135,13 +137,26 @@ async function processQueueImpl(): Promise<void> {
   }
 }
 
+function notifyQueueSettled(): void {
+  for (const listener of queueSettledListeners) listener();
+}
+
 export const syncWorker = {
   async processQueue(): Promise<void> {
     if (processQueueInFlight) return processQueueInFlight;
     processQueueInFlight = processQueueImpl().finally(() => {
       processQueueInFlight = null;
+      notifyQueueSettled();
     });
     return processQueueInFlight;
+  },
+
+  /** Runs after each worker run finishes, including a run that uploaded nothing. */
+  onSettled(listener: () => void): () => void {
+    queueSettledListeners.add(listener);
+    return () => {
+      queueSettledListeners.delete(listener);
+    };
   },
 
   trigger(): void {

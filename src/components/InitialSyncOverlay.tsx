@@ -12,18 +12,25 @@ type Props = {
   onBackToSignIn: () => void;
 };
 
+/** Puts `stayUrl` back after Back. Capture phase runs before the router follows the previous entry. */
+export function installSetupBackTrap(stayUrl: string, onTrapped: () => void): () => void {
+  const trap = () => {
+    window.history.pushState(null, '', stayUrl);
+    onTrapped();
+  };
+  window.history.pushState(null, '', stayUrl);
+  window.addEventListener('popstate', trap, true);
+  return () => window.removeEventListener('popstate', trap, true);
+}
+
 export function InitialSyncOverlay({ visible, stepLabel, progress, error, onRetry, onBackToSignIn }: Props) {
   const pct = Math.round(Math.min(1, Math.max(0, progress)) * 100);
 
   useEffect(() => {
     if (!visible || !error) return;
-    const trap = () => {
-      window.history.pushState(null, '', window.location.href);
+    return installSetupBackTrap(window.location.href, () => {
       showToast('Setup paused', 'Use Retry or Back to sign in to continue.');
-    };
-    window.history.pushState(null, '', window.location.href);
-    window.addEventListener('popstate', trap);
-    return () => window.removeEventListener('popstate', trap);
+    });
   }, [visible, error]);
 
   if (!visible) return null;

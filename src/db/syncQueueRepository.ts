@@ -30,6 +30,18 @@ function byCreatedDesc(a: SyncQueueRow, b: SyncQueueRow): number {
 
 export const syncQueueRepository = {
   /**
+   * A tab can close after a row is marked `SYNCING` and before the request finishes.
+   * Put those rows back to `PENDING` without burning an attempt.
+   */
+  async reclaimSyncing(): Promise<void> {
+    const rows = await db.sync_queue.filter((row) => row.status === 'SYNCING').toArray();
+    for (const row of rows) {
+      if (row.id == null) continue;
+      await db.sync_queue.update(row.id, { status: 'PENDING' });
+    }
+  },
+
+  /**
    * Retryable backlog. Excludes `PENDING_SUPER_ADMIN` and `CLEARED_ADMIN`
    * so a business failure never re-enters the automatic loop.
    */
