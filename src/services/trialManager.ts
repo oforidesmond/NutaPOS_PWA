@@ -8,7 +8,8 @@ export type TrialCheckResult = {
   trialActive: boolean;
 };
 
-function isTrialPlan(org: OrganizationDto | null): boolean {
+/** Missing planType is treated as TRIAL, matching checkout. */
+export function isTrialPlan(org: OrganizationDto | null): boolean {
   const named = org?.planType ?? org?.plan_type;
   const plan = named?.toUpperCase() ?? 'TRIAL';
   return plan === 'TRIAL';

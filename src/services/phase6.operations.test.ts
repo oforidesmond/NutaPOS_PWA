@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { db, type Product, type Sale, type SaleItem, type SyncQueueRow } from '@/db/schema';
 import { prefsRepository } from '@/db/prefsRepository';
 import { setAccessToken, getAccessToken } from '@/db/secretsRepository';
+import { settingsRepository } from '@/db/settingsRepository';
 import { batchOperationsService } from '@/services/batchOperationsService';
 import { databaseBackupService } from '@/services/databaseBackupService';
 import { databaseIntegrityService } from '@/services/databaseIntegrityService';
@@ -182,6 +183,7 @@ describe('phase 6 local operations', () => {
   });
 
   it('auto-fixes a trial count that differs by more than 5', async () => {
+    await settingsRepository.setJson(settingsRepository.keys.organization, { planType: 'TRIAL' });
     await db.trial_usage.put({
       id: 1,
       sales_count: 0,
@@ -199,6 +201,7 @@ describe('phase 6 local operations', () => {
   });
 
   it('leaves a trial count alone when the gap is 5 or less', async () => {
+    await settingsRepository.setJson(settingsRepository.keys.organization, { planType: 'TRIAL' });
     await db.trial_usage.put({
       id: 1,
       sales_count: 0,
@@ -211,6 +214,24 @@ describe('phase 6 local operations', () => {
     );
     const report = await databaseIntegrityService.checkFull();
     expect(report.healthy).toBe(true);
+    expect((await db.trial_usage.get(1))?.sales_count).toBe(0);
+  });
+
+  it('skips the trial count check when the plan is not TRIAL', async () => {
+    await settingsRepository.setJson(settingsRepository.keys.organization, { planType: 'PAID' });
+    await db.trial_usage.put({
+      id: 1,
+      sales_count: 0,
+      trial_limit: 50,
+      device_fingerprint_hash: 'pending_initial_sync',
+      last_updated: '2026-01-01T00:00:00.000Z',
+    });
+    await db.sales.bulkAdd(
+      Array.from({ length: 6 }, (_, index) => sale({ id: `paid-${index}`, receipt_number: `P-${index}` })),
+    );
+    const report = await databaseIntegrityService.checkFull();
+    expect(report.healthy).toBe(true);
+    expect(report.errors).not.toContain('Trial count mismatch (auto-fixed: set to 6)');
     expect((await db.trial_usage.get(1))?.sales_count).toBe(0);
   });
 
