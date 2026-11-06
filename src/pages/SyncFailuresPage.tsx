@@ -7,6 +7,7 @@ import { Screen } from '@/components/Screen';
 import { StockVarianceModal } from '@/components/StockVarianceModal';
 import { showToast } from '@/components/toast';
 import { syncQueueRepository, type SyncQueueRow } from '@/db/syncQueueRepository';
+import { discardUnsyncedSale } from '@/db/saleRepository';
 import type { Product } from '@/db/schema';
 import { discountSettings, type DiscountSettings } from '@/lib/checkoutSettings';
 import { isDiscountSyncError, repairFailedSaleDiscount } from '@/services/discountRepairService';
@@ -154,6 +155,21 @@ export function SyncFailuresPage() {
     }
   };
 
+  const onDiscardFailedSale = async (failed: FailedSale) => {
+    const label = receiptLabel(failed.body);
+    const ok = window.confirm(
+      `Discard ${label}? This removes the failed upload from this device and restores local stock. It does not affect the server (the sale never uploaded).`,
+    );
+    if (!ok) return;
+    try {
+      await discardUnsyncedSale(failed.body.id);
+      showToast('Sale discarded', `${label} removed from this device.`);
+      await refresh();
+    } catch (error) {
+      showToast('Could not discard sale', error instanceof Error ? error.message : String(error));
+    }
+  };
+
   const empty = adminReviewRows.length === 0 && transportRows.length === 0;
 
   return (
@@ -234,6 +250,11 @@ export function SyncFailuresPage() {
                 {body.items.length} item(s) · {row.attempt_count} attempt(s)
               </p>
               <Button title="Edit variance & resend" onClick={() => setEditing({ row, body })} />
+              <Button
+                title="Discard duplicate / cancel"
+                variant="dangerOutline"
+                onClick={() => void onDiscardFailedSale({ row, body })}
+              />
             </article>
           ))}
         </section>

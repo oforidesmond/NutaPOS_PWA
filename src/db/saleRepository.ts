@@ -152,6 +152,49 @@ export async function markSynced(saleId: string, syncedAt: string): Promise<void
   await db.sales.update(saleId, { synced_at: syncedAt });
 }
 
+/**
+ * Discards a local unsynced sale: restores non-temporary stock, removes sale/items,
+ * clears matching sync_queue rows, and decrements trial_usage when it was counted.
+ * No-op (throws) if the sale is already synced or missing.
+ */
+export async function discardUnsyncedSale(saleId: string): Promise<void> {
+  await db.transaction('rw', [db.sales, db.sale_items, db.products, db.sync_queue, db.trial_usage], async () => {
+    const sale = await db.sales.get(saleId);
+    if (!sale) throw new Error('Sale not found on this device');
+    if (sale.synced_at) throw new Error('Sale already synced; discard is only for failed local uploads');
+
+    const items = await db.sale_items.where('sale_id').equals(saleId).toArray();
+    for (const item of items) {
+      if (item.is_temporary_product === 1) continue;
+      const product = await db.products.get(item.product_id);
+      if (product) {
+        await db.products.update(item.product_id, {
+          stock_quantity: product.stock_quantity + item.quantity,
+        });
+      }
+    }
+
+    await db.sale_items.where('sale_id').equals(saleId).delete();
+    await db.sales.delete(saleId);
+
+    const queueRows = await db.sync_queue.where('entity_id').equals(saleId).toArray();
+    for (const row of queueRows) {
+      if (row.id == null) continue;
+      if (row.entity_type === 'sale') await db.sync_queue.delete(row.id);
+    }
+
+    if (sale.is_return === 0) {
+      const trial = await db.trial_usage.get(1);
+      if (trial && trial.sales_count > 0) {
+        await db.trial_usage.update(1, {
+          sales_count: trial.sales_count - 1,
+          last_updated: new Date().toISOString(),
+        });
+      }
+    }
+  });
+}
+
 export async function updateSaleAmounts(
   saleId: string,
   amounts: { discountAmount: number; totalAmount: number },
