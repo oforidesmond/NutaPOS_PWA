@@ -1,5 +1,12 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { buildApiPath, buildRootPath, getApiBaseUrl, getApiPrefix, getApiV1BaseURL } from '@/lib/env';
+import {
+  buildApiPath,
+  buildRootPath,
+  getApiBaseUrl,
+  getApiPrefix,
+  getApiV1BaseURL,
+  isDiscardFailedSalesEnabled,
+} from '@/lib/env';
 
 afterEach(() => {
   vi.unstubAllEnvs();
@@ -32,5 +39,23 @@ describe('api env', () => {
     expect(buildApiPath('/staff/sales')).toBe('/staff/sales');
     expect(buildRootPath('/time')).toBe('https://api.example.com/time');
     expect(buildRootPath('/time').includes('/api/v1')).toBe(false);
+  });
+});
+
+describe('isDiscardFailedSalesEnabled', () => {
+  it('is off when unset or falsey', () => {
+    vi.stubEnv('VITE_ALLOW_DISCARD_FAILED_SALES', '');
+    expect(isDiscardFailedSalesEnabled()).toBe(false);
+    vi.stubEnv('VITE_ALLOW_DISCARD_FAILED_SALES', 'false');
+    expect(isDiscardFailedSalesEnabled()).toBe(false);
+  });
+
+  it('is on for true / 1 / yes', () => {
+    vi.stubEnv('VITE_ALLOW_DISCARD_FAILED_SALES', 'true');
+    expect(isDiscardFailedSalesEnabled()).toBe(true);
+    vi.stubEnv('VITE_ALLOW_DISCARD_FAILED_SALES', '1');
+    expect(isDiscardFailedSalesEnabled()).toBe(true);
+    vi.stubEnv('VITE_ALLOW_DISCARD_FAILED_SALES', 'yes');
+    expect(isDiscardFailedSalesEnabled()).toBe(true);
   });
 });

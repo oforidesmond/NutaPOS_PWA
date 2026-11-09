@@ -4,6 +4,8 @@
 interface ImportMetaEnv {
   readonly VITE_API_URL?: string;
   readonly VITE_API_PREFIX?: string;
+  /** `true` / `1` / `yes` shows Discard on Failed sales; anything else hides it. */
+  readonly VITE_ALLOW_DISCARD_FAILED_SALES?: string;
 }
 
 interface ImportMeta {

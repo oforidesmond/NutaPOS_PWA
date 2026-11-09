@@ -2,9 +2,16 @@ function stripSlash(value: string): string {
   return value.replace(/\/+$/, '');
 }
 
-function readEnv(name: 'VITE_API_URL' | 'VITE_API_PREFIX'): string | undefined {
+type EnvKey = 'VITE_API_URL' | 'VITE_API_PREFIX' | 'VITE_ALLOW_DISCARD_FAILED_SALES';
+
+function readEnv(name: EnvKey): string | undefined {
   const value = import.meta.env[name];
   return typeof value === 'string' ? value : undefined;
+}
+
+function readTruthyFlag(name: EnvKey): boolean {
+  const raw = (readEnv(name) ?? '').trim().toLowerCase();
+  return raw === 'true' || raw === '1' || raw === 'yes';
 }
 
 /** Origin with no trailing slash. Empty when `VITE_API_URL` is unset. */
@@ -41,4 +48,12 @@ export function buildRootPath(path: string): string {
   const normalized = path.startsWith('/') ? path : `/${path}`;
   if (!base) return normalized;
   return `${base}${normalized}`;
+}
+
+/**
+ * When true, Failed sales shows "Discard duplicate / cancel".
+ * Off unless `VITE_ALLOW_DISCARD_FAILED_SALES` is `true` / `1` / `yes` (build-time).
+ */
+export function isDiscardFailedSalesEnabled(): boolean {
+  return readTruthyFlag('VITE_ALLOW_DISCARD_FAILED_SALES');
 }

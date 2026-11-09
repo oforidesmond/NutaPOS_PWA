@@ -10,6 +10,7 @@ import { syncQueueRepository, type SyncQueueRow } from '@/db/syncQueueRepository
 import { discardUnsyncedSale } from '@/db/saleRepository';
 import type { Product } from '@/db/schema';
 import { discountSettings, type DiscountSettings } from '@/lib/checkoutSettings';
+import { isDiscardFailedSalesEnabled } from '@/lib/env';
 import { isDiscountSyncError, repairFailedSaleDiscount } from '@/services/discountRepairService';
 import { pullSyncFailureResolutions } from '@/services/syncFailureResolutionPull';
 import type { StockShortage } from '@/services/stockVarianceService';
@@ -250,11 +251,13 @@ export function SyncFailuresPage() {
                 {body.items.length} item(s) · {row.attempt_count} attempt(s)
               </p>
               <Button title="Edit variance & resend" onClick={() => setEditing({ row, body })} />
-              <Button
-                title="Discard duplicate / cancel"
-                variant="dangerOutline"
-                onClick={() => void onDiscardFailedSale({ row, body })}
-              />
+              {isDiscardFailedSalesEnabled() ? (
+                <Button
+                  title="Discard duplicate / cancel"
+                  variant="dangerOutline"
+                  onClick={() => void onDiscardFailedSale({ row, body })}
+                />
+              ) : null}
             </article>
           ))}
         </section>
