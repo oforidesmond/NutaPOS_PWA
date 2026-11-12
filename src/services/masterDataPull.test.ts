@@ -94,6 +94,7 @@ describe('pullMasterData', () => {
 
     const result = await pullMasterData();
     expect(result.outcome).toBe('changed');
+    expect(result.inventoryOutcome).toBe('empty');
     const saved = await db.products.get('p1');
     expect(saved?.price).toBe(9);
     expect(saved?.stock_quantity).toBe(3);
@@ -101,5 +102,60 @@ describe('pullMasterData', () => {
     expect((await db.sales.get('sale-1'))?.synced_at).toBeNull();
     expect((await db.sync_queue.toArray())[0]?.status).toBe('PENDING');
     expect(await db.sales.count()).toBe(1);
+  });
+
+  it('overwrites local stock from staff inventory after master-data', async () => {
+    fetchMaster.mockResolvedValueOnce({
+      kind: 'ok',
+      data: {
+        products: [{ id: 'p1', name: 'Soap', price: 5, barcode: '111', sku: 'SKU' }],
+        has_more: false,
+        updated_at: '2026-03-01T00:00:00.000Z',
+      },
+    });
+    fetchInventory.mockResolvedValueOnce([
+      {
+        id: 'p1',
+        name: 'Soap',
+        price: 5,
+        barcode: '111',
+        sku: 'SKU',
+        currentStock: 11.5,
+      },
+    ]);
+
+    const result = await pullMasterData();
+    expect(result.outcome).toBe('changed');
+    expect(result.inventoryOutcome).toBe('merged');
+    expect((await db.products.get('p1'))?.stock_quantity).toBe(11.5);
+  });
+
+  it('reports inventoryOutcome failed when inventory fetch throws', async () => {
+    fetchMaster.mockResolvedValueOnce({ kind: 'not_modified' });
+    fetchInventory.mockRejectedValueOnce(new Error('network'));
+
+    const result = await pullMasterData();
+    expect(result.outcome).toBe('unchanged');
+    expect(result.inventoryOutcome).toBe('failed');
+    expect((await db.products.get('p1'))?.stock_quantity).toBe(3);
+  });
+
+  it('still merges inventory when master-data fetch fails entirely', async () => {
+    fetchMaster.mockResolvedValueOnce({ kind: 'error' });
+    fetchInventory.mockResolvedValueOnce([
+      {
+        id: 'p1',
+        name: 'Soap',
+        price: 5,
+        barcode: '111',
+        sku: 'SKU',
+        currentStock: 7,
+      },
+    ]);
+
+    const result = await pullMasterData();
+    expect(result.outcome).toBe('failed');
+    expect(result.inventoryOutcome).toBe('merged');
+    expect((await db.products.get('p1'))?.stock_quantity).toBe(7);
   });
 });

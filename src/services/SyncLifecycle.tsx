@@ -6,10 +6,11 @@ import { syncWorker } from '@/services/syncWorker';
 
 const MASTER_DATA_INTERVAL_MS = 30 * 60 * 1000;
 
-function runSyncCycle(): void {
+async function runSyncCycle(): Promise<void> {
   if (typeof navigator !== 'undefined' && !navigator.onLine) return;
-  void syncWorker.processQueue();
-  void pullMasterData();
+  // Queue first so uploaded sales hit BranchInventory before inventory SoT merge.
+  await syncWorker.processQueue();
+  await pullMasterData();
 }
 
 /**
@@ -23,13 +24,15 @@ export function SyncLifecycle() {
   useEffect(() => {
     if (!userId || !initialSyncComplete) return;
 
-    runSyncCycle();
+    void runSyncCycle();
 
-    const onOnline = () => runSyncCycle();
+    const onOnline = () => {
+      void runSyncCycle();
+    };
     window.addEventListener('online', onOnline);
 
     const interval = window.setInterval(() => {
-      if (navigator.onLine) runSyncCycle();
+      if (navigator.onLine) void runSyncCycle();
     }, MASTER_DATA_INTERVAL_MS);
 
     const onMessage = (event: MessageEvent) => {

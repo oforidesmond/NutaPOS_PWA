@@ -19,9 +19,13 @@ import { syncBranchFromAccessToken } from '@/services/userProfileStore';
 import { useCartStore } from '@/stores/cartStore';
 import type { Product } from '@/db/schema';
 
+export type InventoryMergeOutcome = 'merged' | 'empty' | 'failed' | 'skipped';
+
 export type PullMasterDataResult = {
   outcome: 'changed' | 'unchanged' | 'failed' | 'skipped';
   fullResyncRecommended?: boolean;
+  /** Result of the post-delta `GET /staff/inventory` stock SoT merge. */
+  inventoryOutcome?: InventoryMergeOutcome;
 };
 
 const EPOCH = '1970-01-01T00:00:00.000Z';
@@ -29,19 +33,21 @@ const MAX_PAGES = 50;
 
 let masterDataPullInFlight: Promise<PullMasterDataResult> | null = null;
 
-async function mergeStockFromStaffInventory(): Promise<void> {
+async function mergeStockFromStaffInventory(): Promise<InventoryMergeOutcome> {
   try {
     const inv = await fetchStaffInventory();
-    if (!inv?.length) return;
+    if (!inv?.length) return 'empty';
     const now = new Date().toISOString();
     const rows = normalizeProductsFromList(inv, now);
-    if (!rows.length) return;
+    if (!rows.length) return 'empty';
     await productRepository.updateStockForMany(rows.map((r) => ({ id: r.id, stock_quantity: r.stock_quantity })));
     await productRepository.updateAutoConvertForMany(
       rows.map((r) => ({ id: r.id, auto_convert_json: r.auto_convert_json })),
     );
+    return 'merged';
   } catch {
-    // Inventory is merged best-effort. The delta page is already stored.
+    // Inventory is best-effort relative to master-data pages already stored.
+    return 'failed';
   }
 }
 
@@ -190,12 +196,24 @@ async function pullMasterDataImpl(): Promise<PullMasterDataResult> {
     if (!next) break;
   }
 
+  // Still attempt inventory SoT merge when master-data fails — stock refresh
+  // should not depend on a successful delta page.
   if (fetchFailed && pagesApplied === 0 && outcome !== 'changed') {
-    return { outcome: 'failed', fullResyncRecommended: fullResyncRecommended || undefined };
+    const inventoryOutcome = await mergeStockFromStaffInventory();
+    try {
+      await useCartStore.getState().rehydrateFromDb();
+    } catch {
+      // Cart refresh is best-effort after a catalog pull.
+    }
+    return {
+      outcome: 'failed',
+      fullResyncRecommended: fullResyncRecommended || undefined,
+      inventoryOutcome,
+    };
   }
 
   await prefsRepository.set(prefsRepository.keys.lastSyncTime, now);
-  await mergeStockFromStaffInventory();
+  const inventoryOutcome = await mergeStockFromStaffInventory();
   await refreshTrialCountFromServer();
 
   try {
@@ -209,18 +227,23 @@ async function pullMasterDataImpl(): Promise<PullMasterDataResult> {
   }
 
   if (fetchFailed) {
-    return { outcome: 'failed', fullResyncRecommended: fullResyncRecommended || undefined };
+    return {
+      outcome: 'failed',
+      fullResyncRecommended: fullResyncRecommended || undefined,
+      inventoryOutcome,
+    };
   }
 
   return {
     outcome,
     fullResyncRecommended: fullResyncRecommended || undefined,
+    inventoryOutcome,
   };
 }
 
 export async function pullMasterData(): Promise<PullMasterDataResult> {
   if (!(await getStoredAccessToken())) {
-    return { outcome: 'skipped' };
+    return { outcome: 'skipped', inventoryOutcome: 'skipped' };
   }
   if (masterDataPullInFlight) return masterDataPullInFlight;
   masterDataPullInFlight = pullMasterDataImpl().finally(() => {

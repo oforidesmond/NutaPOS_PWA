@@ -103,11 +103,14 @@ export function PosPage() {
     if (refreshing) return;
     setRefreshing(true);
     try {
+      // Upload pending sales first so server stock is current, then pull catalog + inventory.
+      await syncWorker.processQueue();
       const master = await pullMasterData();
       if (master.outcome === 'failed') {
         showToast('Could not refresh catalog', 'Check your connection and try again.');
+      } else if (master.inventoryOutcome === 'failed') {
+        showToast('Could not refresh stock', 'Catalog updated, but quantities may be outdated.');
       }
-      await syncWorker.processQueue();
       await refreshSyncBanners();
       setDiscountCfg(await discountSettings());
     } finally {
