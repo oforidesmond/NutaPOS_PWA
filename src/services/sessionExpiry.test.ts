@@ -60,6 +60,7 @@ describe('expireDeadSession', () => {
     await db.sync_queue.add({
       entity_type: 'sale',
       entity_id: 's1',
+      operation: 'CREATE',
       payload: { body: { id: 's1' } },
       status: 'PENDING',
       attempt_count: 0,
@@ -70,6 +71,10 @@ describe('expireDeadSession', () => {
       error_code: null,
       admin_message: null,
       last_failed_at: null,
+      resolution_action: null,
+      resolution_status: null,
+      resolved_at: null,
+      admin_applied_sale_id: null,
     });
 
     await expireDeadSession();
