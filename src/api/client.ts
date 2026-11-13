@@ -1,4 +1,4 @@
-import axios, { type AxiosError, type AxiosHeaders, type InternalAxiosRequestConfig } from 'axios';
+import axios, { isAxiosError, type AxiosError, type AxiosHeaders, type InternalAxiosRequestConfig } from 'axios';
 import {
   clearStoredTokens,
   getAccessToken,
@@ -7,6 +7,7 @@ import {
   setRefreshToken,
 } from '@/db/secretsRepository';
 import { buildApiPath, getApiV1BaseURL } from '@/lib/env';
+import { expireDeadSession } from '@/services/sessionExpiry';
 import { syncBranchFromAccessToken } from '@/services/userProfileStore';
 
 let refreshPromise: Promise<string | null> | null = null;
@@ -32,10 +33,17 @@ export const api = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
+function isAuthRejected(error: unknown): boolean {
+  if (!isAxiosError(error)) return false;
+  const status = error.response?.status;
+  return status === 401 || status === 403;
+}
+
 /**
- * Single-flight refresh. Stores the new access token only.
- * A failure rejects and leaves both tokens in IndexedDB.
- * A successful refresh reconnects the notifications socket when one is already open.
+ * Single-flight refresh. Stores the new access token (and refresh token when
+ * the server returns one). Transient network failures leave tokens in place.
+ * A 401/403 from `/auth/refresh` expires the session so staff must sign in
+ * again — otherwise sales stay stuck uploading with a dead token forever.
  */
 export async function refreshAccessToken(): Promise<string | null> {
   if (!refreshPromise) {
@@ -52,24 +60,41 @@ async function performRefresh(): Promise<string | null> {
   const apiRoot = getApiV1BaseURL();
   if (!apiRoot) return null;
   const url = `${apiRoot.replace(/\/+$/, '')}${buildApiPath('/auth/refresh')}`;
-  const res = await axios.post(url, { refresh_token: refreshToken }, { timeout: 30_000 });
-  const data = res.data as { access_token?: string; accessToken?: string };
-  const access = data.access_token ?? data.accessToken ?? null;
-  if (!access) return null;
-  await setAccessToken(access);
   try {
-    await syncBranchFromAccessToken();
-  } catch {
-    // The new access token is already stored. Branch alignment retries on the next refresh.
+    const res = await axios.post(url, { refresh_token: refreshToken }, { timeout: 30_000 });
+    const data = res.data as {
+      access_token?: string;
+      accessToken?: string;
+      refresh_token?: string;
+      refreshToken?: string;
+    };
+    const access = data.access_token ?? data.accessToken ?? null;
+    if (!access) return null;
+    const nextRefresh = data.refresh_token ?? data.refreshToken;
+    if (nextRefresh) {
+      await setStoredTokens(access, nextRefresh);
+    } else {
+      await setAccessToken(access);
+    }
+    try {
+      await syncBranchFromAccessToken();
+    } catch {
+      // The new access token is already stored. Branch alignment retries on the next refresh.
+    }
+    void import('@/services/notificationsSocketLifecycle')
+      .then((mod) => {
+        mod.onAccessTokenRefreshed();
+      })
+      .catch(() => {
+        // The access token is already stored. The socket reconnects on the next visible session.
+      });
+    return access;
+  } catch (error) {
+    if (isAuthRejected(error)) {
+      await expireDeadSession();
+    }
+    throw error;
   }
-  void import('@/services/notificationsSocketLifecycle')
-    .then((mod) => {
-      mod.onAccessTokenRefreshed();
-    })
-    .catch(() => {
-      // The access token is already stored. The socket reconnects on the next visible session.
-    });
-  return access;
 }
 
 api.interceptors.request.use(async (config: InternalAxiosRequestConfig) => {
@@ -103,8 +128,10 @@ api.interceptors.response.use(
         headers.set('Authorization', `Bearer ${newAccess}`);
         return api(original);
       }
+      // No refresh token (or empty access after refresh). Force re-login.
+      await expireDeadSession();
     } catch {
-      // Refresh failed. Do not clear tokens or the local database.
+      // Auth-rejected refresh already expired the session. Network errors keep tokens.
     }
     return Promise.reject(error);
   },

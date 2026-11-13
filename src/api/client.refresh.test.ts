@@ -12,6 +12,7 @@ vi.mock('@/lib/env', async () => {
 import { api } from '@/api/client';
 import { db, type Product } from '@/db/schema';
 import { getAccessToken, getRefreshToken, setAccessToken, setRefreshToken } from '@/db/secretsRepository';
+import { loadUserProfile, saveUserProfile } from '@/services/userProfileStore';
 
 const previousAdapter = api.defaults.adapter;
 
@@ -50,6 +51,13 @@ describe('token refresh', () => {
     await setAccessToken('old-token');
     await setRefreshToken('refresh-token');
     await db.products.add(product());
+    await saveUserProfile({
+      userId: 'user-1',
+      staffId: 'STF-1',
+      branchId: null,
+      organizationId: 'org-1',
+      needsPasswordChange: false,
+    });
   });
 
   afterEach(() => {
@@ -80,6 +88,27 @@ describe('token refresh', () => {
     expect(await getAccessToken()).toBe('refreshed-token');
     expect(await getRefreshToken()).toBe('refresh-token');
     expect(await db.products.get('p1')).toMatchObject({ name: 'Item' });
+  });
+
+  it('stores a rotated refresh token when the server returns one', async () => {
+    vi.spyOn(axios, 'post').mockResolvedValue({
+      data: { access_token: 'refreshed-token', refresh_token: 'new-refresh' },
+      status: 200,
+      statusText: 'OK',
+      headers: {},
+      config: {},
+    } as never);
+    api.defaults.adapter = async (config) => {
+      if (config.headers.get('Authorization') === 'Bearer refreshed-token') {
+        return { data: { ok: true }, status: 200, statusText: 'OK', headers: {}, config };
+      }
+      throw httpError(config, 401);
+    };
+
+    await api.get('/staff/sales');
+
+    expect(await getAccessToken()).toBe('refreshed-token');
+    expect(await getRefreshToken()).toBe('new-refresh');
   });
 
   it('shares one refresh across parallel 401s', async () => {
@@ -116,7 +145,7 @@ describe('token refresh', () => {
     expect(await getAccessToken()).toBe('refreshed-token');
   });
 
-  it('keeps tokens and the local database when refresh fails', async () => {
+  it('keeps tokens and local data when refresh fails from a network error', async () => {
     vi.spyOn(axios, 'post').mockRejectedValue(new Error('refresh down'));
     api.defaults.adapter = async (config) => {
       throw httpError(config, 401);
@@ -126,7 +155,29 @@ describe('token refresh', () => {
 
     expect(await getAccessToken()).toBe('old-token');
     expect(await getRefreshToken()).toBe('refresh-token');
+    expect(await loadUserProfile()).toMatchObject({ userId: 'user-1' });
     expect(await db.products.get('p1')).toMatchObject({ id: 'p1' });
-    expect(await db.sales.count()).toBe(0);
+  });
+
+  it('expires the session when refresh is rejected with 401', async () => {
+    vi.spyOn(axios, 'post').mockRejectedValue(
+      new AxiosError('Unauthorized', '401', undefined, undefined, {
+        status: 401,
+        data: { message: 'Invalid refresh token' },
+        statusText: 'Unauthorized',
+        headers: {},
+        config: {} as InternalAxiosRequestConfig,
+      }),
+    );
+    api.defaults.adapter = async (config) => {
+      throw httpError(config, 401);
+    };
+
+    await expect(api.get('/staff/sales')).rejects.toBeTruthy();
+
+    expect(await getAccessToken()).toBeNull();
+    expect(await getRefreshToken()).toBeNull();
+    expect(await loadUserProfile()).toBeNull();
+    expect(await db.products.get('p1')).toMatchObject({ id: 'p1' });
   });
 });
