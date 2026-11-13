@@ -1,6 +1,12 @@
 import type { StaffSaleItemPayload, StaffSalePayload } from '@/api/salesApi';
 import { insertLocalSaleTx } from '@/db/saleRepository';
+import { productRepository } from '@/db/productRepository';
 import { settingsRepository } from '@/db/settingsRepository';
+import {
+  applyLocalSaleStock,
+  tipFromProductJson,
+  type WorkingStock,
+} from '@/lib/autoConvertStock';
 import { discountSettings, taxSettings } from '@/lib/checkoutSettings';
 import { previewTotals } from '@/lib/checkoutTotals';
 import { validateDiscount } from '@/lib/discount';
@@ -81,6 +87,14 @@ export const saleService = {
     const itemPayloads: StaffSalePayload['items'] = [];
     const insertItems: Parameters<typeof insertLocalSaleTx>[0]['items'] = [];
     const variance = input.stockVarianceByLineKey ?? {};
+    const working: WorkingStock = new Map();
+    const touchedIds = new Set<string>();
+
+    async function ensureWorkingStock(productId: string): Promise<void> {
+      if (working.has(productId)) return;
+      const row = await productRepository.findById(productId);
+      working.set(productId, normalizeQty(row?.stock_quantity ?? 0));
+    }
 
     for (const line of input.lines) {
       const product = line.product;
@@ -111,6 +125,16 @@ export const saleService = {
         varianceNote: noteToPersist,
       });
 
+      if (product.is_temporary !== 1) {
+        await ensureWorkingStock(product.id);
+        const tip = tipFromProductJson(product.auto_convert_json);
+        if (tip) {
+          await ensureWorkingStock(tip.parent_product_id);
+        }
+        const updates = applyLocalSaleStock(working, product.id, quantity, tip);
+        for (const u of updates) touchedIds.add(u.id);
+      }
+
       const apiItem: StaffSaleItemPayload = {
         id: itemId,
         productId: product.id,
@@ -128,6 +152,11 @@ export const saleService = {
       }
       itemPayloads.push(apiItem);
     }
+
+    const stockUpdates = [...touchedIds].map((id) => ({
+      id,
+      stock_quantity: normalizeQty(working.get(id) ?? 0),
+    }));
 
     const body: StaffSalePayload = {
       id: saleId,
@@ -190,6 +219,7 @@ export const saleService = {
       staffId: input.staffUserId,
       branchId: input.branchId,
       items: insertItems,
+      stockUpdates: stockUpdates.length > 0 ? stockUpdates : undefined,
       syncQueueEntries,
       incrementTrial: trial.trialActive,
     });

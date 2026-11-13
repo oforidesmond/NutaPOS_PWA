@@ -17,11 +17,20 @@ export type InsertSaleInput = {
     unitPrice: number;
     totalPrice: number;
     isTemporaryProduct: boolean;
+    /**
+     * Relative stock change for the sold product. Used when `stockUpdates`
+     * is omitted (e.g. returns). Ignored when `stockUpdates` is provided.
+     */
     stockDelta: number;
     /** Stock-variance metadata frozen at sale time (mirrors sync payload). */
     varianceReason?: string | null;
     varianceNote?: string | null;
   }[];
+  /**
+   * Absolute stock writes (child + optional parent after local pack break).
+   * When set, replaces per-line `stockDelta` application for this sale.
+   */
+  stockUpdates?: { id: string; stock_quantity: number }[];
   /** Ordered sync queue rows inserted atomically with the sale. */
   syncQueueEntries?: {
     entityType: string;
@@ -62,12 +71,21 @@ export async function insertLocalSaleTx(input: InsertSaleInput): Promise<void> {
         variance_reason: line.varianceReason ?? null,
         variance_note: line.varianceNote ?? null,
       });
-      if (!line.isTemporaryProduct) {
+      if (!line.isTemporaryProduct && !input.stockUpdates?.length) {
         const product = await db.products.get(line.productId);
         if (product) {
           await db.products.update(line.productId, {
             stock_quantity: product.stock_quantity + line.stockDelta,
           });
+        }
+      }
+    }
+
+    if (input.stockUpdates?.length) {
+      for (const row of input.stockUpdates) {
+        const product = await db.products.get(row.id);
+        if (product) {
+          await db.products.update(row.id, { stock_quantity: row.stock_quantity });
         }
       }
     }

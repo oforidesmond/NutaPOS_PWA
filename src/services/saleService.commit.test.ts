@@ -244,6 +244,38 @@ describe('completeSale offline commit', () => {
       }),
     ).rejects.toThrow('Missing organization - run initial sync');
   });
+
+  it('breaks a pack locally on commit without variance when parent covers', async () => {
+    const parent = product({ id: 'parent-1', name: 'Pack', stock_quantity: 1 });
+    const child = product({
+      id: 'child-1',
+      name: 'Single',
+      stock_quantity: 0,
+      auto_convert_json: JSON.stringify({
+        parent_product_id: 'parent-1',
+        parent_name: 'Pack',
+        conversion_ratio: 12,
+        sibling_product_ids: [],
+        sibling_names: [],
+      }),
+    });
+    await db.products.bulkPut([parent, child]);
+
+    await saleService.completeSale({
+      lines: [line(child, 5)],
+      paymentMethod: 'CASH',
+      staffUserId: 'user-1',
+      branchId: 'branch-1',
+    });
+
+    expect((await db.products.get('parent-1'))?.stock_quantity).toBe(0);
+    expect((await db.products.get('child-1'))?.stock_quantity).toBe(7);
+    const queue = await db.sync_queue.toArray();
+    const salePayload = queue.find((r) => r.entity_type === 'sale')?.payload as {
+      body: StaffSalePayload;
+    };
+    expect(salePayload.body.items[0]?.varianceReason).toBeUndefined();
+  });
 });
 
 describe('variance draft', () => {

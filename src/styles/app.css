@@ -1314,6 +1314,41 @@ h2 {
   white-space: pre-wrap;
 }
 
+.pwa-update-banner {
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm) var(--space-md);
+  margin: 0;
+  padding: var(--space-md) var(--space-lg);
+  border-bottom: 1px solid #bbf7d0;
+  background: #ecfdf5;
+  color: var(--text);
+}
+
+.pwa-update-banner__copy {
+  flex: 1 1 auto;
+  font-weight: 500;
+}
+
+.pwa-update-banner__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.pwa-update-banner__reload,
+.pwa-update-banner__later {
+  width: auto;
+  min-height: 36px;
+  padding: 6px 14px;
+}
+
 @media (min-width: 1024px) {
   .sheet {
     width: min(560px, 100%);

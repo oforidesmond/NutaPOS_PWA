@@ -23,7 +23,8 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      registerType: 'autoUpdate',
+      // Prompt so cashiers can apply the update (avoids a mid-sale auto-reload).
+      registerType: 'prompt',
       injectRegister: 'auto',
       devOptions: { enabled: false },
       includeAssets: ['favicon.png', 'icon.png', 'icons/icon-192.png', 'icons/icon-512.png'],

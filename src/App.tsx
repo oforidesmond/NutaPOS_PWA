@@ -2,6 +2,7 @@ import type { CSSProperties } from 'react';
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import { ClockWarningHost } from '@/components/ClockWarningHost';
 import { IntegrityLaunchGate } from '@/components/IntegrityLaunchGate';
+import { PwaUpdateBanner } from '@/components/PwaUpdateBanner';
 import { RequireProfile, RequireReady } from '@/components/RequireAuth';
 import { ToastHost } from '@/components/ToastHost';
 import { AuthProvider } from '@/context/AuthContext';
@@ -25,6 +26,7 @@ export function App() {
     <div style={cssVars as CSSProperties}>
       <AuthProvider>
         <BrowserRouter>
+          <PwaUpdateBanner />
           <IntegrityLaunchGate />
           <ClockWarningHost />
           <Routes>
