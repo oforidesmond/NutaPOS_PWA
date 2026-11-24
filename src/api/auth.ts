@@ -1,5 +1,5 @@
 import { api, setStoredTokens } from '@/api/client';
-import { assertApiConfigured, assertLoginAllowed } from '@/lib/authErrors';
+import { assertApiConfigured, assertLoginAllowed, NOT_STAFF_COPY } from '@/lib/authErrors';
 import { buildApiPath } from '@/lib/env';
 import type { LoginResponseDto } from '@/types/session';
 
@@ -10,6 +10,10 @@ export async function staffLogin(staffId: string, password: string): Promise<Log
   const refresh = data.refresh_token ?? data.refreshToken;
   if (!access) {
     throw new Error('Login response missing access token');
+  }
+  const staffProfile = data.staffProfile ?? data.staff_profile;
+  if (!staffProfile?.staffId?.trim()) {
+    throw new Error(NOT_STAFF_COPY);
   }
   await setStoredTokens(access, refresh ?? null);
   return data;

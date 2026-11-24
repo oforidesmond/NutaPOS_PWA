@@ -9,6 +9,7 @@ import { showToast } from '@/components/toast';
 import { searchSales } from '@/db/saleRepository';
 import type { Sale } from '@/db/schema';
 import { printSaleReceipt, printSaleWithBrowser } from '@/services/printerService';
+import { syncWorker } from '@/services/syncWorker';
 import { text } from '@/theme';
 
 type Range = 'today' | 'week' | 'month' | 'all';
@@ -31,6 +32,18 @@ function dateBounds(range: Range, now = new Date()): { dateFrom?: string; dateTo
   return {};
 }
 
+/** Pending vs synced counts for the currently loaded history rows. */
+export function syncStatusSummary(sales: Sale[]): { pendingCount: number; syncedCount: number; message: string } | null {
+  if (sales.length === 0) return null;
+  const pendingCount = sales.filter((sale) => !sale.synced_at).length;
+  const syncedCount = sales.length - pendingCount;
+  const message =
+    pendingCount > 0
+      ? `${pendingCount} of ${sales.length} sales pending sync`
+      : `All ${sales.length} sales synced`;
+  return { pendingCount, syncedCount, message };
+}
+
 export function SalesHistoryPage() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
@@ -45,12 +58,20 @@ export function SalesHistoryPage() {
   const [offer, setOffer] = useState<{ saleId: string; message: string } | null>(null);
 
   const load = useCallback(
-    async (next?: { range?: Range; receiptQuery?: string; minAmountStr?: string; maxAmountStr?: string; payment?: string }) => {
+    async (next?: {
+      range?: Range;
+      receiptQuery?: string;
+      minAmountStr?: string;
+      maxAmountStr?: string;
+      payment?: string;
+      quiet?: boolean;
+    }) => {
       const activeRange = next?.range ?? range;
       const activeReceipt = next?.receiptQuery ?? receiptQuery;
       const activeMin = next?.minAmountStr ?? minAmountStr;
       const activeMax = next?.maxAmountStr ?? maxAmountStr;
       const activePayment = next?.payment ?? payment;
+      const quiet = next?.quiet === true;
       const trimmedMin = activeMin.trim();
       const trimmedMax = activeMax.trim();
       const minAmount = trimmedMin === '' ? undefined : Number(trimmedMin);
@@ -65,16 +86,18 @@ export function SalesHistoryPage() {
         minAmount > maxAmount;
 
       if (minInvalid || maxInvalid || rangeInvalid) {
-        setFeedbackMessage(
-          minInvalid || maxInvalid
-            ? 'Enter valid totals before applying filters.'
-            : 'Minimum total cannot be greater than maximum total.',
-        );
+        if (!quiet) {
+          setFeedbackMessage(
+            minInvalid || maxInvalid
+              ? 'Enter valid totals before applying filters.'
+              : 'Minimum total cannot be greater than maximum total.',
+          );
+        }
         return;
       }
 
-      setFeedbackMessage(null);
-      setLoading(true);
+      if (!quiet) setFeedbackMessage(null);
+      if (!quiet) setLoading(true);
       try {
         const bounds = dateBounds(activeRange);
         let list = await searchSales(
@@ -93,7 +116,7 @@ export function SalesHistoryPage() {
         }
         setRows(list);
       } finally {
-        setLoading(false);
+        if (!quiet) setLoading(false);
       }
     },
     [range, receiptQuery, minAmountStr, maxAmountStr, payment],
@@ -104,6 +127,10 @@ export function SalesHistoryPage() {
     // Initial week view only. Apply reads the latest field values.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => syncWorker.onSettled(() => void load({ quiet: true })), [load]);
+
+  const syncSummary = !loading ? syncStatusSummary(rows) : null;
 
   const clearFilters = () => {
     setRange('week');
@@ -229,6 +256,16 @@ export function SalesHistoryPage() {
       <Button title="Apply" onClick={() => void load()} />
       {hasActiveFilters ? <Button title="Clear filters" variant="ghost" onClick={clearFilters} /> : null}
 
+      {syncSummary ? (
+        syncSummary.pendingCount > 0 ? (
+          <FeedbackBanner message={syncSummary.message} variant="warning" />
+        ) : (
+          <p className="history-sync-ok" style={text.callout}>
+            {syncSummary.message}
+          </p>
+        )
+      ) : null}
+
       {loading ? (
         <p style={text.callout}>Loading sales…</p>
       ) : rows.length === 0 ? (
@@ -254,7 +291,11 @@ export function SalesHistoryPage() {
                 <div className="history-main">
                   <div className="history-top">
                     <p style={text.headline}>{label}</p>
-                    {sale.synced_at ? <span className="badge">Synced</span> : null}
+                    {sale.synced_at ? (
+                      <span className="badge">Synced</span>
+                    ) : (
+                      <span className="badge badge-pending">Pending</span>
+                    )}
                   </div>
                   <p className="history-meta" style={text.footnote}>
                     {sale.sold_at.slice(0, 16)} · GHS {Number(sale.total_amount).toFixed(2)} · {sale.payment_method ?? ''}

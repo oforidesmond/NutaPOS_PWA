@@ -4,7 +4,7 @@ import { beginStaffLogin, staffLogin } from '@/api/auth';
 import { api } from '@/api/client';
 import { db } from '@/db/schema';
 import { getAccessToken, getRefreshToken } from '@/db/secretsRepository';
-import { AUTH_FAILURE_COPY, friendlyAuthError, loginBlockReason } from '@/lib/authErrors';
+import { AUTH_FAILURE_COPY, friendlyAuthError, loginBlockReason, NOT_STAFF_COPY } from '@/lib/authErrors';
 import { normalizeUser } from '@/services/normalizeUser';
 
 describe('login guards', () => {
@@ -38,9 +38,44 @@ describe('login guards', () => {
     await expect(staffLogin('STAFF', 'secret')).rejects.toThrow('Login response missing access token');
   });
 
-  it('stores camelCase tokens', async () => {
+  it('rejects a login response without a staff profile and does not store tokens', async () => {
     vi.spyOn(api, 'post').mockResolvedValue({
       data: { accessToken: 'acc', refreshToken: 'ref', user: { id: 'user-1' } },
+      status: 200,
+      statusText: 'OK',
+      headers: {},
+      config: {},
+    } as never);
+    await expect(staffLogin('STAFF', 'secret')).rejects.toThrow(NOT_STAFF_COPY);
+    expect(await getAccessToken()).toBeNull();
+    expect(await getRefreshToken()).toBeNull();
+  });
+
+  it('rejects a login response with an empty staffId and does not store tokens', async () => {
+    vi.spyOn(api, 'post').mockResolvedValue({
+      data: {
+        accessToken: 'acc',
+        refreshToken: 'ref',
+        user: { id: 'user-1' },
+        staff_profile: { staffId: '   ', branchId: 'branch-1' },
+      },
+      status: 200,
+      statusText: 'OK',
+      headers: {},
+      config: {},
+    } as never);
+    await expect(staffLogin('STAFF', 'secret')).rejects.toThrow(NOT_STAFF_COPY);
+    expect(await getAccessToken()).toBeNull();
+  });
+
+  it('stores camelCase tokens when staff profile is present', async () => {
+    vi.spyOn(api, 'post').mockResolvedValue({
+      data: {
+        accessToken: 'acc',
+        refreshToken: 'ref',
+        user: { id: 'user-1' },
+        staffProfile: { staffId: 'S1', branchId: 'branch-1' },
+      },
       status: 200,
       statusText: 'OK',
       headers: {},
@@ -59,6 +94,34 @@ describe('friendlyAuthError', () => {
       error.response = { status, data: {}, statusText: '', headers: {}, config: {} as never };
       expect(friendlyAuthError(error)).toBe(AUTH_FAILURE_COPY);
     }
+  });
+
+  it('returns NOT_STAFF_COPY for non-staff API bodies before credential mapping', () => {
+    const error = new AxiosError('Request failed');
+    error.response = {
+      status: 403,
+      data: { message: 'User is not a staff member' },
+      statusText: '',
+      headers: {},
+      config: {} as never,
+    };
+    expect(friendlyAuthError(error)).toBe(NOT_STAFF_COPY);
+  });
+
+  it('returns NOT_STAFF_COPY for a local staff-profile rejection', () => {
+    expect(friendlyAuthError(new Error(NOT_STAFF_COPY))).toBe(NOT_STAFF_COPY);
+  });
+
+  it('returns NOT_STAFF_COPY for a known errorCode', () => {
+    const error = new AxiosError('Request failed');
+    error.response = {
+      status: 403,
+      data: { errorCode: 'NOT_STAFF', message: 'Forbidden' },
+      statusText: '',
+      headers: {},
+      config: {} as never,
+    };
+    expect(friendlyAuthError(error)).toBe(NOT_STAFF_COPY);
   });
 });
 

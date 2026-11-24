@@ -969,6 +969,15 @@ h2 {
   font-weight: 500;
 }
 
+.badge-pending {
+  background: #fffbeb;
+  color: var(--warn);
+}
+
+.history-sync-ok {
+  margin: 0;
+}
+
 .filter-chips {
   display: flex;
   flex-wrap: wrap;
